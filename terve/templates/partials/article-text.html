@@ -1,0 +1,20 @@
+{{define "article-text"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else}}
+{{if .Title}}<h2 class="article-title">{{.Title}}</h2>{{end}}
+
+{{if .Tokens}}
+<div class="tokenized-text">
+{{- range .Tokens -}}
+{{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
+{{- else -}}<span class="punct">{{.Token}}</span>
+{{- end -}}
+{{- end -}}
+</div>
+{{else if .PlainText}}
+<div class="plain-text">{{.PlainText}}</div>
+{{end}}
+
+{{end}}
+{{end}}

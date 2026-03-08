@@ -1,0 +1,12 @@
+{{define "article-list"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else}}
+<select onchange="if(this.value) htmx.ajax('GET', '/article/'+this.value, {target:'#article-body', indicator:'#articles-loading'})">
+    <option value="">Select an article...</option>
+    {{range .Articles}}
+    <option value="{{.ID}}">{{.Title}}</option>
+    {{end}}
+</select>
+{{end}}
+{{end}}

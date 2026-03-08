@@ -1,0 +1,61 @@
+package main
+
+import (
+	"bufio"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/lehmann314159/terve2/internal/server"
+)
+
+func main() {
+	loadEnvFile(".env")
+
+	port := envOr("PORT", "3000")
+	voikkoURL := envOr("VOIKKO_URL", "http://localhost:8000")
+	ollamaURL := envOr("OLLAMA_URL", "http://localhost:11434")
+	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:72b-instruct-q4_K_M")
+
+	srv := server.New(port, voikkoURL, ollamaURL, ollamaModel)
+
+	log.Printf("Starting Terve on http://localhost:%s", port)
+	log.Printf("Voikko: %s  Ollama: %s  Model: %s", voikkoURL, ollamaURL, ollamaModel)
+
+	if err := srv.Start(); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// loadEnvFile reads a .env file and sets vars that aren't already in the environment.
+func loadEnvFile(path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return // missing .env is fine
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		if os.Getenv(k) == "" {
+			os.Setenv(k, v)
+		}
+	}
+}

@@ -1,0 +1,66 @@
+{{define "analysis"}}
+{{if .VoikkoError}}
+<div class="error-msg">{{.VoikkoError}}</div>
+{{end}}
+
+{{if .Text}}
+<p class="selected-text">Selected: <strong>{{.Text}}</strong></p>
+{{end}}
+
+{{if .Translation}}
+<div class="translation">
+    <h4>Translation</h4>
+    <p>{{.Translation}}</p>
+</div>
+{{end}}
+
+<h3>Analysis</h3>
+
+{{if .Tokens}}
+<table class="morph-table">
+    <thead>
+        <tr>
+            <th>Word</th>
+            <th>Lemma</th>
+            <th>Class</th>
+            <th>Case</th>
+            <th>Number</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Tokens}}
+            {{if eq .Type "word"}}
+                {{$tok := .Token}}
+                {{if .Analyses}}
+                    {{range .Analyses}}
+                    <tr>
+                        <td>{{$tok}}</td>
+                        <td>{{.Lemma}}</td>
+                        <td>{{.WordClass}}</td>
+                        <td>{{.Case}}</td>
+                        <td>{{.Number}}</td>
+                    </tr>
+                    {{end}}
+                {{else}}
+                <tr>
+                    <td>{{.Token}}</td>
+                    <td colspan="4" class="unrecognized">unrecognized</td>
+                </tr>
+                {{end}}
+            {{end}}
+        {{end}}
+    </tbody>
+</table>
+{{end}}
+
+{{if .Explanation}}
+<div class="explanation">
+    <h4>Explanation</h4>
+    <p>{{.Explanation}}</p>
+</div>
+{{end}}
+
+{{if .OllamaError}}
+<div class="error-msg explanation-error">{{.OllamaError}}</div>
+{{end}}
+{{end}}

@@ -1,0 +1,25 @@
+{{define "content"}}
+{{if eq .ActivePage "home"}}
+<div class="home">
+    <h1>Terve!</h1>
+    <p class="subtitle">Finnish reading comprehension, powered by morphological analysis.</p>
+
+    <div class="feature-cards">
+        <div class="card">
+            <h2>Read Finnish Articles</h2>
+            <p>Load articles from YLE Selkosuomi (simplified Finnish news) or paste your own Finnish text.</p>
+        </div>
+        <div class="card">
+            <h2>Click Any Word</h2>
+            <p>Click a word or select a phrase to see its morphological breakdown — lemma, case, number, and more.</p>
+        </div>
+        <div class="card">
+            <h2>Get Explanations</h2>
+            <p>An AI tutor explains the grammar in plain English, grounded in Voikko analysis.</p>
+        </div>
+    </div>
+
+    <a href="/read" class="btn btn-primary">Start Reading</a>
+</div>
+{{end}}
+{{end}}

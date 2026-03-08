@@ -1,0 +1,280 @@
+/* --- Variables --- */
+:root {
+    --primary: #0066cc;
+    --primary-dark: #004d99;
+    --success: #28a745;
+    --error: #dc3545;
+    --bg: #f8f9fa;
+    --bg-white: #ffffff;
+    --text: #333333;
+    --text-light: #666666;
+    --border: #dee2e6;
+    --shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --radius: 8px;
+}
+
+/* --- Reset --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Navbar --- */
+.navbar {
+    background: var(--primary);
+    color: white;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    box-shadow: var(--shadow);
+}
+.nav-brand a {
+    color: white;
+    text-decoration: none;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-right: 2rem;
+}
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+}
+.nav-links a {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    transition: background 0.2s;
+}
+.nav-links a:hover, .nav-links a.active {
+    color: white;
+    background: rgba(255,255,255,0.15);
+}
+
+/* --- Layout --- */
+.container {
+    flex: 1;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.footer {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-light);
+    font-size: 0.85rem;
+}
+
+/* --- Home --- */
+.home { text-align: center; padding-top: 3rem; }
+.home h1 { font-size: 3rem; color: var(--primary); margin-bottom: 0.5rem; }
+.subtitle { font-size: 1.2rem; color: var(--text-light); margin-bottom: 2rem; }
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* --- Card --- */
+.card {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    text-align: left;
+}
+.card h2 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--primary); }
+.card p { color: var(--text-light); font-size: 0.95rem; }
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    cursor: pointer;
+    background: var(--primary);
+    color: white;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+.btn:hover { background: var(--primary-dark); }
+
+/* --- Reading Layout --- */
+.reading-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+.text-panel {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+}
+.analysis-panel {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+}
+.analysis-panel h3 { color: var(--primary); margin-bottom: 1rem; }
+
+/* --- Text Controls --- */
+.text-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* --- Article Select --- */
+#article-select select {
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--bg-white);
+    min-width: 300px;
+}
+
+/* --- Article Text --- */
+.article-body { min-height: 200px; }
+.article-title { color: var(--primary); margin-bottom: 1rem; font-size: 1.3rem; }
+.placeholder-text { color: var(--text-light); font-style: italic; }
+.tokenized-text { line-height: 2; }
+
+/* --- Word Tokens --- */
+.word {
+    cursor: pointer;
+    padding: 2px 1px;
+    border-radius: 3px;
+    transition: background 0.15s;
+}
+.word:hover {
+    background: #d4edff;
+}
+.word.selected {
+    background: #a8d4ff;
+    font-weight: 600;
+}
+.punct { /* punctuation tokens render inline naturally */ }
+
+/* --- Paste Area --- */
+.paste-area {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+.paste-area textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 0.5rem;
+}
+
+/* --- Morphology Table --- */
+.morph-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+.morph-table th, .morph-table td {
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+.morph-table th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-light);
+}
+.morph-table .unrecognized {
+    color: var(--error);
+    font-style: italic;
+}
+
+/* --- Selected Text --- */
+.selected-text {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: #f0f7ff;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+}
+
+/* --- Translation --- */
+.translation {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f0f7ff;
+    border-radius: var(--radius);
+}
+.translation h4 { color: var(--primary); margin-bottom: 0.5rem; }
+.translation p { font-size: 1.1rem; line-height: 1.6; }
+
+/* --- Explanation --- */
+.explanation {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+.explanation h4 { color: var(--primary); margin-bottom: 0.5rem; }
+.explanation p { line-height: 1.7; }
+
+/* --- Error --- */
+.error-msg {
+    color: var(--error);
+    padding: 0.5rem;
+    background: #fdf0f0;
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+.explanation-error { margin-top: 1rem; }
+
+/* --- Loading --- */
+.loading { text-align: center; padding: 2rem; color: var(--text-light); }
+.spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 0.5rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.htmx-indicator { display: none; color: var(--text-light); font-size: 0.9rem; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+    .reading-layout {
+        grid-template-columns: 1fr;
+    }
+    .analysis-panel {
+        position: static;
+        max-height: none;
+    }
+}

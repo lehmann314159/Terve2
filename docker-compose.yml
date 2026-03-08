@@ -1,0 +1,36 @@
+services:
+  terve:
+    image: lehmann314159/terve:latest
+    build: ./terve
+    container_name: terve
+    environment:
+      - PORT=3000
+      - VOIKKO_URL=http://voikko:8000
+      - OLLAMA_URL=http://host-gateway:11434
+      - OLLAMA_MODEL=qwen2.5:72b-instruct-q4_K_M
+    extra_hosts:
+      - "host-gateway:host-gateway"
+    depends_on:
+      voikko:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [web, internal]
+
+  voikko:
+    image: lehmann314159/terve-voikko:latest
+    build: ./voikko
+    container_name: terve-voikko
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks: [internal]
+
+networks:
+  web:
+    external: true
+  internal:
+    driver: bridge
