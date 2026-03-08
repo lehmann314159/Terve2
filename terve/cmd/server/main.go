@@ -17,6 +17,7 @@ func main() {
 	voikkoURL := envOr("VOIKKO_URL", "http://localhost:8000")
 	ollamaURL := envOr("OLLAMA_URL", "http://localhost:11434")
 	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:72b-instruct-q4_K_M")
+	dbPath := envOr("DB_PATH", "./data/terve.db")
 
 	authCfg := auth.AuthConfig{
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -29,10 +30,14 @@ func main() {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	sessionEncryptKey := os.Getenv("SESSION_ENCRYPT_KEY")
 
-	srv := server.New(port, voikkoURL, ollamaURL, ollamaModel, authCfg, sessionSecret, sessionEncryptKey)
+	srv, err := server.New(port, voikkoURL, ollamaURL, ollamaModel, dbPath, authCfg, sessionSecret, sessionEncryptKey)
+	if err != nil {
+		log.Fatalf("Server init failed: %v", err)
+	}
 
 	log.Printf("Starting Terve on http://localhost:%s", port)
 	log.Printf("Voikko: %s  Ollama: %s  Model: %s", voikkoURL, ollamaURL, ollamaModel)
+	log.Printf("Database: %s", dbPath)
 
 	if err := srv.Start(); err != nil {
 		log.Fatalf("Server failed: %v", err)

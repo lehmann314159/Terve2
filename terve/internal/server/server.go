@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/securecookie"
 	"github.com/lehmann314159/terve2/internal/auth"
+	"github.com/lehmann314159/terve2/internal/db"
 	"github.com/lehmann314159/terve2/internal/handlers"
 	"github.com/lehmann314159/terve2/internal/ollama"
 	"github.com/lehmann314159/terve2/internal/voikko"
@@ -27,13 +29,19 @@ type Server struct {
 }
 
 // New creates a new server instance.
-func New(port, voikkoURL, ollamaURL, ollamaModel string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) *Server {
+func New(port, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) (*Server, error) {
 	s := &Server{
 		port:   port,
 		router: chi.NewRouter(),
 	}
 
 	s.parseTemplates()
+
+	// Open database
+	database, err := db.Open(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
 
 	// Session cookie store
 	hashKey := deriveKey(sessionSecret)
@@ -46,7 +54,7 @@ func New(port, voikkoURL, ollamaURL, ollamaModel string, authCfg auth.AuthConfig
 	vc := voikko.NewClient(voikkoURL)
 	oc := ollama.NewClient(ollamaURL, ollamaModel)
 	s.handlers = handlers.New(s.templates, vc, oc)
-	s.authHandlers = auth.NewAuthHandlers(authCfg, cookieStore, stateSC, s.templates)
+	s.authHandlers = auth.NewAuthHandlers(authCfg, cookieStore, stateSC, s.templates, database)
 
 	// Middleware
 	s.router.Use(middleware.Logger)
@@ -56,7 +64,7 @@ func New(port, voikkoURL, ollamaURL, ollamaModel string, authCfg auth.AuthConfig
 
 	s.setupRoutes()
 
-	return s
+	return s, nil
 }
 
 // parseTemplates loads all HTML templates.

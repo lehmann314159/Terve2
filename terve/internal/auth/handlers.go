@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/securecookie"
+	"github.com/lehmann314159/terve2/internal/db"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 )
@@ -35,16 +36,18 @@ type AuthHandlers struct {
 	store     *CookieStore
 	stateSC   *securecookie.SecureCookie
 	templates *template.Template
+	db        *db.DB
 	providers map[string]*oauth2.Config
 }
 
 // NewAuthHandlers creates the auth handler set.
-func NewAuthHandlers(cfg AuthConfig, store *CookieStore, stateSC *securecookie.SecureCookie, templates *template.Template) *AuthHandlers {
+func NewAuthHandlers(cfg AuthConfig, store *CookieStore, stateSC *securecookie.SecureCookie, templates *template.Template, database *db.DB) *AuthHandlers {
 	h := &AuthHandlers{
 		config:    cfg,
 		store:     store,
 		stateSC:   stateSC,
 		templates: templates,
+		db:        database,
 		providers: make(map[string]*oauth2.Config),
 	}
 
@@ -190,9 +193,18 @@ func (ah *AuthHandlers) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Upsert user in database
+	dbUserID, err := ah.db.UpsertUser(provider, user.ID, user.Name, user.Email, user.AvatarURL)
+	if err != nil {
+		log.Printf("upsert user (%s): %v", provider, err)
+		http.Error(w, "Failed to save user", http.StatusInternalServerError)
+		return
+	}
+
 	// Create session
 	sess := &Session{
 		UserID:    fmt.Sprintf("%s:%s", provider, user.ID),
+		DBUserID:  dbUserID,
 		Name:      user.Name,
 		Email:     user.Email,
 		AvatarURL: user.AvatarURL,

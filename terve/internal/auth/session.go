@@ -16,6 +16,7 @@ const (
 // Session holds the authenticated user's identity.
 type Session struct {
 	UserID    string
+	DBUserID  int64  // primary key in the users table
 	Name      string
 	Email     string
 	AvatarURL string
