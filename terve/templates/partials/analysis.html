@@ -29,6 +29,7 @@
         </tr>
     </thead>
     <tbody>
+        {{$trans := .LemmaTranslations}}
         {{range .Tokens}}
             {{if eq .Type "word"}}
                 {{$tok := .Token}}
@@ -36,8 +37,8 @@
                     {{range .Analyses}}
                     <tr>
                         <td>{{$tok}}</td>
-                        <td>{{.Lemma}}</td>
-                        <td>{{.WordClass}}</td>
+                        <td>{{.Lemma}}{{with index $trans .Lemma}} <span class="morph-english">({{.}})</span>{{end}}</td>
+                        <td>{{.WordClass}}{{with .WordClassEnglish}} <span class="morph-english">({{.}})</span>{{end}}</td>
                         <td>{{.Case}}</td>
                         <td>{{.Number}}</td>
                     </tr>

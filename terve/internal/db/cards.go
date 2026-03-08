@@ -216,6 +216,28 @@ func (db *DB) UserHasCard(userID int64, lemma, finnish string) bool {
 	return exists == 1
 }
 
+// LookupLemmaTranslations returns a map of lemma→translation for known lemmas.
+func (db *DB) LookupLemmaTranslations(lemmas []string) map[string]string {
+	result := make(map[string]string)
+	if len(lemmas) == 0 {
+		return result
+	}
+	// Query each lemma individually to avoid building dynamic IN clauses.
+	stmt, err := db.Prepare(`SELECT translation FROM cards WHERE lemma = ? AND translation != '' LIMIT 1`)
+	if err != nil {
+		return result
+	}
+	defer stmt.Close()
+
+	for _, lemma := range lemmas {
+		var translation string
+		if err := stmt.QueryRow(lemma).Scan(&translation); err == nil {
+			result[lemma] = translation
+		}
+	}
+	return result
+}
+
 func scanUserCards(rows *sql.Rows) ([]UserCard, error) {
 	var ucs []UserCard
 	for rows.Next() {

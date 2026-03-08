@@ -2,9 +2,10 @@ package voikko
 
 // MorphAnalysis is a single morphological interpretation of a word.
 type MorphAnalysis struct {
-	Lemma     string `json:"lemma"`
-	WordClass string `json:"word_class"`
-	Case      string `json:"case,omitempty"`
+	Lemma            string `json:"lemma"`
+	WordClass        string `json:"word_class"`
+	WordClassEnglish string `json:"word_class_english,omitempty"`
+	Case             string `json:"case,omitempty"`
 	Number    string `json:"number,omitempty"`
 	Person    string `json:"person,omitempty"`
 	Tense     string `json:"tense,omitempty"`

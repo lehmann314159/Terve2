@@ -261,6 +261,10 @@ body {
     color: var(--error);
     font-style: italic;
 }
+.morph-english {
+    color: var(--text-light);
+    font-size: 0.85em;
+}
 
 /* --- Selected Text --- */
 .selected-text {

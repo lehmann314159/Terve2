@@ -11,10 +11,11 @@ import (
 
 // AnalysisData is passed to the analysis partial template.
 type AnalysisData struct {
-	Text        string
-	Context     string
-	Tokens      []voikko.TokenAnalysis
-	VoikkoError string
+	Text              string
+	Context           string
+	Tokens            []voikko.TokenAnalysis
+	VoikkoError       string
+	LemmaTranslations map[string]string
 }
 
 // ExplainData is passed to the explanation partial template.
@@ -54,11 +55,23 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 		tokens = sv.Tokens
 	}
 
+	// Look up English translations for lemmas from the cards table
+	var lemmas []string
+	for _, t := range tokens {
+		if t.Type == "word" {
+			for _, a := range t.Analyses {
+				lemmas = append(lemmas, a.Lemma)
+			}
+		}
+	}
+	translations := h.db.LookupLemmaTranslations(lemmas)
+
 	h.renderPartial(w, "analysis", AnalysisData{
-		Text:        text,
-		Context:     context,
-		Tokens:      tokens,
-		VoikkoError: voikkoErr,
+		Text:              text,
+		Context:           context,
+		Tokens:            tokens,
+		VoikkoError:       voikkoErr,
+		LemmaTranslations: translations,
 	})
 }
 

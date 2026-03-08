@@ -23,6 +23,15 @@ number_map = {
     "singular": "singular", "plural": "plural",
 }
 
+class_map = {
+    "nimisana": "noun", "teonsana": "verb", "laatusana": "adjective",
+    "seikkasana": "adverb", "asemosana": "pronoun", "sidesana": "conjunction",
+    "suhdesana": "adposition", "huudahdussana": "interjection",
+    "lukusana": "numeral", "etuliite": "prefix", "lyhenne": "abbreviation",
+    "kieltosana": "negation", "paikannimi": "place name",
+    "sukunimi": "surname", "etunimi": "first name", "nimi": "name",
+}
+
 
 def analyze_word(word: str) -> list:
     """Full morphological analysis of a single Finnish word."""
@@ -37,9 +46,11 @@ def analyze_word(word: str) -> list:
         case_raw = raw.get("SIJAMUOTO", "")
         num_raw = raw.get("NUMBER", "")
 
+        wc_lower = wc.lower() if wc else "unknown"
         entry = {
             "lemma": lemma,
-            "word_class": wc.lower() if wc else "unknown",
+            "word_class": wc_lower,
+            "word_class_english": class_map.get(wc_lower, wc_lower),
             "case": case_map.get(case_raw.lower(), case_raw.lower()) if case_raw else None,
             "number": number_map.get(num_raw.lower(), num_raw.lower()) if num_raw else None,
             "person": raw.get("PERSON", None),
@@ -79,7 +90,7 @@ def validate_sentence(sentence: str) -> dict:
                 "token": text,
                 "type": "word",
                 "valid": valid,
-                "analyses": analyses[:2],
+                "analyses": analyses[:1],
             })
         else:
             result_tokens.append({
