@@ -8,9 +8,11 @@ import (
 
 // PageData is passed to full page templates.
 type PageData struct {
-	Title      string
-	ActivePage string
-	User       *auth.Session
+	Title         string
+	ActivePage    string
+	User          *auth.Session
+	GoogleEnabled bool
+	GitHubEnabled bool
 }
 
 // pageData creates a PageData with the session from the request context.

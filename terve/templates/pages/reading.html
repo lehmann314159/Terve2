@@ -1,5 +1,4 @@
-{{define "content"}}
-{{if eq .ActivePage "read"}}
+{{define "read-content"}}
 <div class="reading-layout">
     <div class="text-panel">
         <div class="text-controls">
@@ -20,11 +19,4 @@
         <p class="placeholder-text">Click a word or select a phrase in the text to see its analysis.</p>
     </div>
 </div>
-{{end}}
-{{end}}
-
-{{define "scripts"}}
-{{if eq .ActivePage "read"}}
-<script src="/static/js/selection.js"></script>
-{{end}}
 {{end}}

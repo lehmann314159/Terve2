@@ -38,9 +38,14 @@
         <p>Terve &mdash; Finnish Reading Comprehension</p>
     </footer>
 
-    {{template "scripts" .}}
+    {{if eq .ActivePage "read"}}<script src="/static/js/selection.js"></script>{{end}}
 </body>
 </html>
 {{end}}
 
-{{define "scripts"}}{{end}}
+{{define "content"}}
+{{if eq .ActivePage "home"}}{{template "home-content" .}}
+{{else if eq .ActivePage "read"}}{{template "read-content" .}}
+{{else if eq .ActivePage "login"}}{{template "login-content" .}}
+{{end}}
+{{end}}
