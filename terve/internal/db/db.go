@@ -58,5 +58,47 @@ func (db *DB) migrate() error {
 			UNIQUE(provider, provider_id)
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS cards (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			finnish      TEXT NOT NULL,
+			lemma        TEXT NOT NULL,
+			word_class   TEXT NOT NULL DEFAULT '',
+			morphology   TEXT NOT NULL DEFAULT '',
+			translation  TEXT NOT NULL DEFAULT '',
+			explanation  TEXT NOT NULL DEFAULT '',
+			context      TEXT NOT NULL DEFAULT '',
+			source       TEXT NOT NULL DEFAULT 'user',
+			created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(lemma, finnish)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS user_cards (
+			id            INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id       INTEGER NOT NULL REFERENCES users(id),
+			card_id       INTEGER NOT NULL REFERENCES cards(id),
+			focused       BOOLEAN NOT NULL DEFAULT 0,
+			ease_factor   REAL    NOT NULL DEFAULT 2.5,
+			interval_days INTEGER NOT NULL DEFAULT 0,
+			repetitions   INTEGER NOT NULL DEFAULT 0,
+			next_review   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_review   DATETIME,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, card_id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	return db.seedCards()
 }

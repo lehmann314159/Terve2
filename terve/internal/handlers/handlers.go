@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/lehmann314159/terve2/internal/db"
 	"github.com/lehmann314159/terve2/internal/ollama"
 	"github.com/lehmann314159/terve2/internal/voikko"
 )
@@ -14,14 +15,16 @@ type Handlers struct {
 	templates *template.Template
 	voikko    *voikko.Client
 	ollama    *ollama.Client
+	db        *db.DB
 }
 
 // New creates a new Handlers instance.
-func New(templates *template.Template, vc *voikko.Client, oc *ollama.Client) *Handlers {
+func New(templates *template.Template, vc *voikko.Client, oc *ollama.Client, database *db.DB) *Handlers {
 	return &Handlers{
 		templates: templates,
 		voikko:    vc,
 		ollama:    oc,
+		db:        database,
 	}
 }
 

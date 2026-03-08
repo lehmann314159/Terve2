@@ -73,4 +73,19 @@
 {{if .OllamaError}}
 <div class="error-msg explanation-error">{{.OllamaError}}</div>
 {{end}}
+
+{{if and .LoggedIn .Translation}}
+<div id="save-flashcard-area">
+    <form hx-post="/flashcards/save" hx-target="#save-flashcard-area" hx-swap="innerHTML">
+        <input type="hidden" name="finnish" value="{{.Text}}">
+        <input type="hidden" name="lemma" value="{{.Lemma}}">
+        <input type="hidden" name="word_class" value="{{.WordClass}}">
+        <input type="hidden" name="morphology" value="{{.Morphology}}">
+        <input type="hidden" name="translation" value="{{.Translation}}">
+        <input type="hidden" name="explanation" value="{{.Explanation}}">
+        <input type="hidden" name="context" value="{{.Context}}">
+        <button type="submit" class="btn btn-save-card">Save as Flashcard</button>
+    </form>
+</div>
+{{end}}
 {{end}}

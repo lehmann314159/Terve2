@@ -54,7 +54,7 @@ func New(port, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.Au
 
 	vc := voikko.NewClient(voikkoURL)
 	oc := ollama.NewClient(ollamaURL, ollamaModel)
-	s.handlers = handlers.New(s.templates, vc, oc)
+	s.handlers = handlers.New(s.templates, vc, oc, database)
 	s.authHandlers = auth.NewAuthHandlers(authCfg, cookieStore, stateSC, s.templates, database)
 
 	// Middleware

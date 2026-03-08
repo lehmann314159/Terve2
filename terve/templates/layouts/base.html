@@ -14,6 +14,7 @@
         <ul class="nav-links">
             <li><a href="/" class="{{if eq .ActivePage "home"}}active{{end}}">Home</a></li>
             <li><a href="/read" class="{{if eq .ActivePage "read"}}active{{end}}">Read</a></li>
+            {{if .User}}<li><a href="/flashcards" class="{{if eq .ActivePage "flashcards"}}active{{end}}">Flashcards</a></li>{{end}}
         </ul>
         <div class="nav-auth">
             {{if .User}}
@@ -47,5 +48,6 @@
 {{if eq .ActivePage "home"}}{{template "home-content" .}}
 {{else if eq .ActivePage "read"}}{{template "read-content" .}}
 {{else if eq .ActivePage "login"}}{{template "login-content" .}}
+{{else if eq .ActivePage "flashcards"}}{{template "flashcards-content" .}}
 {{end}}
 {{end}}

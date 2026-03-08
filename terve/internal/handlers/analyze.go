@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/ollama"
 	"github.com/lehmann314159/terve2/internal/voikko"
 )
@@ -21,6 +22,13 @@ type ExplainData struct {
 	Translation string
 	Explanation string
 	OllamaError string
+	// Fields for the save-as-flashcard button
+	LoggedIn    bool
+	Text        string
+	Context     string
+	Lemma       string
+	WordClass   string
+	Morphology  string
 }
 
 // Analyze handles POST /analyze — returns morphology immediately.
@@ -84,8 +92,39 @@ func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	translation, explanation := ollama.ParseResponse(response)
+
+	// Gather data for the save-as-flashcard button
+	sess := auth.GetSession(r.Context())
+	var lemma, wordClass, morphology string
+	if len(tokens) > 0 {
+		// Use first word token's first analysis
+		for _, t := range tokens {
+			if t.Type == "word" && len(t.Analyses) > 0 {
+				a := t.Analyses[0]
+				lemma = a.Lemma
+				wordClass = a.WordClass
+				if a.Case != "" {
+					morphology = a.Case
+				}
+				if a.Number != "" {
+					if morphology != "" {
+						morphology += ", "
+					}
+					morphology += a.Number
+				}
+				break
+			}
+		}
+	}
+
 	h.renderPartial(w, "explanation", ExplainData{
 		Translation: translation,
 		Explanation: explanation,
+		LoggedIn:    sess != nil,
+		Text:        text,
+		Context:     context,
+		Lemma:       lemma,
+		WordClass:   wordClass,
+		Morphology:  morphology,
 	})
 }

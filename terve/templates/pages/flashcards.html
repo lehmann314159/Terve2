@@ -1,0 +1,192 @@
+{{define "flashcards-content"}}
+<div class="flashcards-page">
+    <div class="fc-header">
+        <h1>Flashcards</h1>
+        <div class="fc-stats">
+            <span class="fc-stat">{{.Total}} cards</span>
+            <span class="fc-stat fc-stat-due">{{.Due}} due</span>
+        </div>
+    </div>
+
+    <div class="fc-actions">
+        {{if gt .Due 0}}
+        <a href="#" class="btn btn-review"
+           hx-get="/flashcards/review"
+           hx-target="#review-area"
+           hx-swap="innerHTML">Start Review ({{.Due}})</a>
+        {{end}}
+
+        <div class="fc-add-form">
+            <input type="text" name="finnish" id="fc-add-input"
+                   placeholder="Add a Finnish word..."
+                   class="fc-input">
+            <button class="btn"
+                    hx-post="/flashcards/validate"
+                    hx-include="#fc-add-input"
+                    hx-target="#validate-area"
+                    hx-swap="innerHTML"
+                    hx-indicator="#validate-spinner">Add</button>
+            <span id="validate-spinner" class="htmx-indicator">Checking...</span>
+        </div>
+    </div>
+
+    <div id="review-area"></div>
+    <div id="validate-area"></div>
+
+    <div class="fc-filters">
+        <button class="fc-filter-btn {{if eq .Filter "all"}}active{{end}}"
+                hx-get="/flashcards/list?filter=all"
+                hx-target="#card-list"
+                hx-swap="innerHTML">All</button>
+        <button class="fc-filter-btn {{if eq .Filter "focused"}}active{{end}}"
+                hx-get="/flashcards/list?filter=focused"
+                hx-target="#card-list"
+                hx-swap="innerHTML">Focused</button>
+        <button class="fc-filter-btn {{if eq .Filter "due"}}active{{end}}"
+                hx-get="/flashcards/list?filter=due"
+                hx-target="#card-list"
+                hx-swap="innerHTML">Due</button>
+    </div>
+
+    <div id="card-list">
+        {{template "flashcard-list" .}}
+    </div>
+</div>
+{{end}}
+
+{{define "flashcard-list"}}
+<table class="fc-table">
+    <thead>
+        <tr>
+            <th>Finnish</th>
+            <th>Lemma</th>
+            <th>Class</th>
+            <th>Translation</th>
+            <th>Next Review</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Cards}}
+        <tr class="{{if .Focused}}fc-focused{{end}}">
+            <td class="fc-finnish">{{.Card.Finnish}}</td>
+            <td>{{.Card.Lemma}}</td>
+            <td><span class="fc-class">{{.Card.WordClass}}</span></td>
+            <td>{{.Card.Translation}}</td>
+            <td class="fc-date">{{.NextReview.Format "Jan 2"}}</td>
+            <td class="fc-actions-cell">
+                <button class="fc-btn-focus {{if .Focused}}focused{{end}}"
+                        hx-post="/flashcards/{{.ID}}/focus"
+                        hx-target="#card-list"
+                        hx-swap="innerHTML"
+                        title="{{if .Focused}}Unfocus{{else}}Focus{{end}}">&#9733;</button>
+                <button class="fc-btn-delete"
+                        hx-delete="/flashcards/{{.ID}}"
+                        hx-target="#card-list"
+                        hx-swap="innerHTML"
+                        hx-confirm="Remove this card?"
+                        title="Remove">&times;</button>
+            </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="fc-empty">No cards match this filter.</td></tr>
+        {{end}}
+    </tbody>
+</table>
+{{end}}
+
+{{define "review-card"}}
+{{if .Done}}
+<div class="fc-review-done">
+    <h2>All caught up!</h2>
+    <p>No more cards due for review. Come back later.</p>
+</div>
+{{else}}
+<div class="fc-review-card">
+    <div class="fc-review-front">
+        <p class="fc-review-word">{{.UserCard.Card.Finnish}}</p>
+        {{if .UserCard.Focused}}<span class="fc-focus-badge">Focused</span>{{end}}
+        <button class="btn" onclick="this.closest('.fc-review-card').classList.add('revealed')">Reveal</button>
+    </div>
+    <div class="fc-review-back">
+        <div class="fc-review-answer">
+            {{if .UserCard.Card.Translation}}
+            <p class="fc-review-translation">{{.UserCard.Card.Translation}}</p>
+            {{end}}
+            {{if .UserCard.Card.Explanation}}
+            <p class="fc-review-explanation">{{.UserCard.Card.Explanation}}</p>
+            {{end}}
+            {{if .UserCard.Card.WordClass}}
+            <p class="fc-review-meta">
+                <span class="fc-class">{{.UserCard.Card.WordClass}}</span>
+                {{if .UserCard.Card.Morphology}} &mdash; {{.UserCard.Card.Morphology}}{{end}}
+                {{if and (ne .UserCard.Card.Lemma .UserCard.Card.Finnish) .UserCard.Card.Lemma}}
+                    &mdash; lemma: <strong>{{.UserCard.Card.Lemma}}</strong>
+                {{end}}
+            </p>
+            {{end}}
+        </div>
+        <div class="fc-rating-buttons">
+            <button class="btn fc-rate fc-rate-again"
+                    hx-post="/flashcards/review/{{.UserCard.ID}}"
+                    hx-vals='{"quality":"1"}'
+                    hx-target="#review-area"
+                    hx-swap="innerHTML">Again</button>
+            <button class="btn fc-rate fc-rate-hard"
+                    hx-post="/flashcards/review/{{.UserCard.ID}}"
+                    hx-vals='{"quality":"3"}'
+                    hx-target="#review-area"
+                    hx-swap="innerHTML">Hard</button>
+            <button class="btn fc-rate fc-rate-good"
+                    hx-post="/flashcards/review/{{.UserCard.ID}}"
+                    hx-vals='{"quality":"4"}'
+                    hx-target="#review-area"
+                    hx-swap="innerHTML">Good</button>
+            <button class="btn fc-rate fc-rate-easy"
+                    hx-post="/flashcards/review/{{.UserCard.ID}}"
+                    hx-vals='{"quality":"5"}'
+                    hx-target="#review-area"
+                    hx-swap="innerHTML">Easy</button>
+        </div>
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{define "validate-result"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else}}
+<div class="fc-validate-preview">
+    <h3>Preview</h3>
+    <table class="morph-table">
+        <tr><th>Word</th><td>{{.Finnish}}</td></tr>
+        <tr><th>Lemma</th><td>{{.Lemma}}</td></tr>
+        {{if .WordClass}}<tr><th>Class</th><td>{{.WordClass}}</td></tr>{{end}}
+        {{if .Morphology}}<tr><th>Morphology</th><td>{{.Morphology}}</td></tr>{{end}}
+        {{if .Translation}}<tr><th>Translation</th><td>{{.Translation}}</td></tr>{{end}}
+    </table>
+    {{if .AlreadySaved}}
+    <p class="fc-already-saved">You already have this card.</p>
+    {{else}}
+    <form hx-post="/flashcards/add" hx-target="#card-list" hx-swap="innerHTML">
+        <input type="hidden" name="finnish" value="{{.Finnish}}">
+        <input type="hidden" name="lemma" value="{{.Lemma}}">
+        <input type="hidden" name="word_class" value="{{.WordClass}}">
+        <input type="hidden" name="morphology" value="{{.Morphology}}">
+        <input type="hidden" name="translation" value="{{.Translation}}">
+        <button type="submit" class="btn">Confirm &amp; Add</button>
+    </form>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "save-result"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{end}}
+{{if .Success}}
+<div class="fc-save-success">{{.Success}}</div>
+{{end}}
+{{end}}

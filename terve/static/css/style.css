@@ -396,6 +396,232 @@ body {
     color: var(--primary);
 }
 
+/* --- Save Flashcard Button --- */
+.btn-save-card {
+    margin-top: 1rem;
+    background: var(--success);
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+.btn-save-card:hover { background: #218838; }
+.fc-save-success {
+    color: var(--success);
+    font-weight: 500;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* --- Flashcards Page --- */
+.flashcards-page { max-width: 1000px; margin: 0 auto; }
+.fc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.fc-header h1 { color: var(--primary); font-size: 1.8rem; }
+.fc-stats { display: flex; gap: 1rem; }
+.fc-stat {
+    background: var(--bg-white);
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    box-shadow: var(--shadow);
+}
+.fc-stat-due { color: var(--primary); font-weight: 600; }
+
+/* --- Flashcard Actions Bar --- */
+.fc-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.btn-review {
+    background: var(--success);
+}
+.btn-review:hover { background: #218838; }
+.fc-add-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.fc-input {
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-family: inherit;
+    min-width: 200px;
+}
+
+/* --- Filters --- */
+.fc-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.fc-filter-btn {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.fc-filter-btn:hover { background: var(--bg); }
+.fc-filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* --- Card Table --- */
+.fc-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+.fc-table th, .fc-table td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+.fc-table th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-light);
+}
+.fc-finnish { font-weight: 600; }
+.fc-class {
+    background: var(--bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+.fc-date { font-size: 0.85rem; color: var(--text-light); }
+.fc-empty {
+    text-align: center;
+    color: var(--text-light);
+    font-style: italic;
+    padding: 2rem;
+}
+.fc-focused { background: #fffbeb; }
+.fc-actions-cell {
+    display: flex;
+    gap: 0.3rem;
+}
+.fc-btn-focus, .fc-btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+.fc-btn-focus { color: var(--border); }
+.fc-btn-focus:hover { color: #f59e0b; background: #fffbeb; }
+.fc-btn-focus.focused { color: #f59e0b; }
+.fc-btn-delete { color: var(--text-light); }
+.fc-btn-delete:hover { color: var(--error); background: #fdf0f0; }
+
+/* --- Review Card --- */
+.fc-review-card {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.fc-review-front { display: block; }
+.fc-review-back { display: none; }
+.fc-review-card.revealed .fc-review-front button { display: none; }
+.fc-review-card.revealed .fc-review-back { display: block; }
+.fc-review-word {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+}
+.fc-focus-badge {
+    display: inline-block;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+.fc-review-answer { text-align: left; margin-bottom: 1.5rem; }
+.fc-review-translation {
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+.fc-review-explanation {
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+.fc-review-meta {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+.fc-rating-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+.fc-rate { padding: 0.5rem 1.2rem; font-size: 0.9rem; }
+.fc-rate-again { background: var(--error); }
+.fc-rate-again:hover { background: #c82333; }
+.fc-rate-hard { background: #e67e22; }
+.fc-rate-hard:hover { background: #d35400; }
+.fc-rate-good { background: var(--success); }
+.fc-rate-good:hover { background: #218838; }
+.fc-rate-easy { background: var(--primary); }
+.fc-rate-easy:hover { background: var(--primary-dark); }
+
+/* --- Review Done --- */
+.fc-review-done {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.fc-review-done h2 { color: var(--success); margin-bottom: 0.5rem; }
+
+/* --- Validate Preview --- */
+.fc-validate-preview {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.fc-validate-preview h3 { color: var(--primary); margin-bottom: 0.5rem; }
+.fc-validate-preview .morph-table { margin-bottom: 1rem; }
+.fc-already-saved {
+    color: var(--text-light);
+    font-style: italic;
+}
+
 /* --- Responsive --- */
 @media (max-width: 900px) {
     .reading-layout {
@@ -405,4 +631,7 @@ body {
         position: static;
         max-height: none;
     }
+    .fc-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+    .fc-actions { flex-direction: column; align-items: stretch; }
+    .fc-rating-buttons { flex-wrap: wrap; }
 }
