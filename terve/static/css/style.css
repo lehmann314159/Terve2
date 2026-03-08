@@ -217,7 +217,6 @@ body {
 }
 .word.selected {
     background: #a8d4ff;
-    font-weight: 600;
 }
 .punct { /* punctuation tokens render inline naturally */ }
 

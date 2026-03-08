@@ -1,11 +1,14 @@
 // selection.js — Capture word clicks and phrase selections, send to /analyze via htmx.
 
-// Clear previous highlights as soon as a new interaction begins.
+// Clear previous highlights on mousedown, deferred to avoid
+// reflow that can shift the browser's selection anchor point.
 document.addEventListener('mousedown', function(e) {
     var body = document.getElementById('article-body');
     if (!body || !body.contains(e.target)) return;
-    body.querySelectorAll('.word.selected').forEach(function(w) {
-        w.classList.remove('selected');
+    requestAnimationFrame(function() {
+        body.querySelectorAll('.word.selected').forEach(function(w) {
+            w.classList.remove('selected');
+        });
     });
 });
 
