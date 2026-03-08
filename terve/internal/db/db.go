@@ -100,5 +100,52 @@ func (db *DB) migrate() error {
 		return err
 	}
 
-	return db.seedCards()
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS books (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			title        TEXT NOT NULL,
+			author       TEXT NOT NULL,
+			description  TEXT NOT NULL DEFAULT '',
+			gutenberg_id INTEGER,
+			source       TEXT NOT NULL DEFAULT 'seed',
+			created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(gutenberg_id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS book_chapters (
+			id             INTEGER PRIMARY KEY AUTOINCREMENT,
+			book_id        INTEGER NOT NULL REFERENCES books(id),
+			chapter_number INTEGER NOT NULL,
+			title          TEXT NOT NULL DEFAULT '',
+			content        TEXT NOT NULL,
+			UNIQUE(book_id, chapter_number)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS user_bookmarks (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id    INTEGER NOT NULL REFERENCES users(id),
+			book_id    INTEGER NOT NULL REFERENCES books(id),
+			chapter_id INTEGER NOT NULL REFERENCES book_chapters(id),
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(user_id, book_id)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	if err := db.seedCards(); err != nil {
+		return err
+	}
+	return db.seedBooks()
 }

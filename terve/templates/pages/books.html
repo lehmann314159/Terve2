@@ -1,0 +1,182 @@
+{{define "books-content"}}
+<div class="books-page">
+    <div class="books-header">
+        <h1>Books</h1>
+        <p class="books-subtitle">Read Finnish literature from Project Gutenberg</p>
+    </div>
+
+    {{if .User}}
+    <div class="gutenberg-search">
+        <h3>Import from Project Gutenberg</h3>
+        <div class="search-form">
+            <input type="text" id="gutenberg-query" class="fc-input" placeholder="Search Finnish books..."
+                   hx-get="/books/search" hx-trigger="keyup changed delay:500ms" hx-target="#search-results"
+                   hx-indicator="#search-loading" name="q">
+            <span id="search-loading" class="htmx-indicator">Searching...</span>
+        </div>
+        <div id="search-results"></div>
+    </div>
+    {{end}}
+
+    <div class="book-grid">
+        {{range .Books}}
+        <a href="/books/{{.ID}}" class="book-card">
+            <div class="book-card-body">
+                <h2 class="book-card-title">{{.Title}}</h2>
+                <p class="book-card-author">{{.Author}}</p>
+                <p class="book-card-meta">{{.ChapterCount}} {{if eq .ChapterCount 1}}chapter{{else}}chapters{{end}}</p>
+                {{if $.User}}{{if index $.Bookmarks .ID}}
+                <span class="book-badge-continue">Continue Reading</span>
+                {{end}}{{end}}
+            </div>
+        </a>
+        {{else}}
+        <p class="placeholder-text">No books available yet.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "book-reader-content"}}
+<div class="reading-layout">
+    <div class="text-panel">
+        <div class="book-nav-bar">
+            <a href="/books" class="btn btn-back">&larr; Books</a>
+            <div class="book-title-bar">
+                <h2 class="article-title">{{.Book.Title}}</h2>
+                <span class="book-author-label">by {{.Book.Author}}</span>
+            </div>
+        </div>
+
+        <div class="chapter-nav">
+            {{if gt .ChapterNumber 1}}
+            <button class="btn btn-chapter-nav"
+                    hx-get="/books/{{.Book.ID}}/chapter/{{sub .ChapterNumber 1}}"
+                    hx-target="#chapter-content"
+                    hx-push-url="false">&larr; Prev</button>
+            {{else}}
+            <button class="btn btn-chapter-nav" disabled>&larr; Prev</button>
+            {{end}}
+
+            <select class="chapter-select"
+                    hx-get="" hx-target="#chapter-content"
+                    hx-push-url="false"
+                    onchange="htmx.ajax('GET', '/books/{{.Book.ID}}/chapter/' + this.value, {target:'#chapter-content'})">
+                {{range .Chapters}}
+                <option value="{{.ChapterNumber}}" {{if eq .ChapterNumber $.ChapterNumber}}selected{{end}}>
+                    Ch. {{.ChapterNumber}}{{if .Title}} — {{.Title}}{{end}}
+                </option>
+                {{end}}
+            </select>
+
+            {{if lt .ChapterNumber .Book.ChapterCount}}
+            <button class="btn btn-chapter-nav"
+                    hx-get="/books/{{.Book.ID}}/chapter/{{add .ChapterNumber 1}}"
+                    hx-target="#chapter-content"
+                    hx-push-url="false">Next &rarr;</button>
+            {{else}}
+            <button class="btn btn-chapter-nav" disabled>Next &rarr;</button>
+            {{end}}
+        </div>
+
+        <div id="chapter-content">
+            <div id="article-body" class="article-body">
+                {{if .CurrentChapter.Title}}<h3 class="chapter-title">{{.CurrentChapter.Title}}</h3>{{end}}
+                {{if .Tokens}}
+                <div class="tokenized-text">
+                {{- range .Tokens -}}
+                {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
+                {{- else -}}<span class="punct">{{.Token}}</span>
+                {{- end -}}
+                {{- end -}}
+                </div>
+                {{else if .PlainText}}
+                <div class="plain-text">{{.PlainText}}</div>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="chapter-nav chapter-nav-bottom">
+            {{if gt .ChapterNumber 1}}
+            <button class="btn btn-chapter-nav"
+                    hx-get="/books/{{.Book.ID}}/chapter/{{sub .ChapterNumber 1}}"
+                    hx-target="#chapter-content"
+                    hx-push-url="false">&larr; Prev</button>
+            {{else}}
+            <button class="btn btn-chapter-nav" disabled>&larr; Prev</button>
+            {{end}}
+
+            <span class="chapter-indicator">Chapter {{.ChapterNumber}} of {{.Book.ChapterCount}}</span>
+
+            {{if lt .ChapterNumber .Book.ChapterCount}}
+            <button class="btn btn-chapter-nav"
+                    hx-get="/books/{{.Book.ID}}/chapter/{{add .ChapterNumber 1}}"
+                    hx-target="#chapter-content"
+                    hx-push-url="false">Next &rarr;</button>
+            {{else}}
+            <button class="btn btn-chapter-nav" disabled>Next &rarr;</button>
+            {{end}}
+        </div>
+    </div>
+
+    <div class="analysis-panel" id="analysis-panel">
+        <h3>Analysis</h3>
+        <p class="placeholder-text">Click a word or select a phrase in the text to see its analysis.</p>
+    </div>
+</div>
+{{end}}
+
+{{define "book-chapter"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else}}
+<div id="article-body" class="article-body">
+    {{if .Chapter.Title}}<h3 class="chapter-title">{{.Chapter.Title}}</h3>{{end}}
+    {{if .Tokens}}
+    <div class="tokenized-text">
+    {{- range .Tokens -}}
+    {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
+    {{- else -}}<span class="punct">{{.Token}}</span>
+    {{- end -}}
+    {{- end -}}
+    </div>
+    {{else if .PlainText}}
+    <div class="plain-text">{{.PlainText}}</div>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "gutenberg-results"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else if .Results}}
+<div class="search-results-list">
+    {{range .Results}}
+    <div class="search-result-item">
+        <div class="search-result-info">
+            <strong>{{.Title}}</strong>
+            {{range .Authors}}<span class="search-result-author"> — {{.Name}}</span>{{end}}
+            <span class="search-result-id">(#{{.ID}})</span>
+        </div>
+        <form hx-post="/books/import" hx-target="#search-results" hx-swap="innerHTML">
+            <input type="hidden" name="gutenberg_id" value="{{.ID}}">
+            <input type="hidden" name="title" value="{{.Title}}">
+            <input type="hidden" name="author" value="{{range .Authors}}{{.Name}}{{end}}">
+            <button type="submit" class="btn btn-import">Import</button>
+        </form>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<p class="placeholder-text">No Finnish books found for "{{.Query}}".</p>
+{{end}}
+{{end}}
+
+{{define "import-result"}}
+{{if .Error}}
+<div class="error-msg">{{.Error}}</div>
+{{else if .Success}}
+<div class="fc-save-success">{{.Success}} <a href="/books/{{.BookID}}">Start reading &rarr;</a></div>
+{{end}}
+{{end}}

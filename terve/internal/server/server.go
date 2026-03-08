@@ -78,6 +78,8 @@ func (s *Server) parseTemplates() {
 			b, _ := json.Marshal(s)
 			return template.JS(b)
 		},
+		"add": func(a, b int) int { return a + b },
+		"sub": func(a, b int) int { return a - b },
 	}
 
 	tmpl := template.New("").Funcs(funcMap)

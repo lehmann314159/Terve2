@@ -30,6 +30,17 @@ func (s *Server) setupRoutes() {
 	s.router.Post("/explain", s.handlers.Explain)
 	s.router.Post("/load-text", s.handlers.LoadCustomText)
 
+	// Books (public reading, auth-gated bookmarks/import)
+	s.router.Get("/books", s.handlers.BooksPage)
+	s.router.Get("/books/{bookID}", s.handlers.BookReader)
+	s.router.Get("/books/{bookID}/chapter/{num}", s.handlers.BookChapter)
+	s.router.Route("/books", func(r chi.Router) {
+		r.Use(auth.RequireAuth)
+		r.Post("/{bookID}/bookmark", s.handlers.SaveBookmark)
+		r.Get("/search", s.handlers.SearchGutenberg)
+		r.Post("/import", s.handlers.ImportBook)
+	})
+
 	// Flashcards (requires auth)
 	s.router.Route("/flashcards", func(r chi.Router) {
 		r.Use(auth.RequireAuth)

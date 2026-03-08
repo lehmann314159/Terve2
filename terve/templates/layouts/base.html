@@ -14,6 +14,7 @@
         <ul class="nav-links">
             <li><a href="/" class="{{if eq .ActivePage "home"}}active{{end}}">Home</a></li>
             <li><a href="/read" class="{{if eq .ActivePage "read"}}active{{end}}">Read</a></li>
+            <li><a href="/books" class="{{if or (eq .ActivePage "books") (eq .ActivePage "book-reader")}}active{{end}}">Books</a></li>
             {{if .User}}<li><a href="/flashcards" class="{{if eq .ActivePage "flashcards"}}active{{end}}">Flashcards</a></li>{{end}}
         </ul>
         <div class="nav-auth">
@@ -39,7 +40,7 @@
         <p>Terve &mdash; Finnish Reading Comprehension</p>
     </footer>
 
-    {{if eq .ActivePage "read"}}<script src="/static/js/selection.js"></script>{{end}}
+    {{if or (eq .ActivePage "read") (eq .ActivePage "book-reader")}}<script src="/static/js/selection.js"></script>{{end}}
 </body>
 </html>
 {{end}}
@@ -49,5 +50,7 @@
 {{else if eq .ActivePage "read"}}{{template "read-content" .}}
 {{else if eq .ActivePage "login"}}{{template "login-content" .}}
 {{else if eq .ActivePage "flashcards"}}{{template "flashcards-content" .}}
+{{else if eq .ActivePage "books"}}{{template "books-content" .}}
+{{else if eq .ActivePage "book-reader"}}{{template "book-reader-content" .}}
 {{end}}
 {{end}}
