@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -72,6 +73,10 @@ func (s *Server) parseTemplates() {
 	funcMap := template.FuncMap{
 		"safe": func(str string) template.HTML {
 			return template.HTML(str)
+		},
+		"jsonString": func(s string) template.JS {
+			b, _ := json.Marshal(s)
+			return template.JS(b)
 		},
 	}
 

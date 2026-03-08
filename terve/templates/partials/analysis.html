@@ -10,7 +10,7 @@
 <div id="explain-panel"
      hx-post="/explain"
      hx-trigger="load"
-     hx-vals='{"text": "{{.Text}}", "context": "{{.Context}}"}'
+     hx-vals='{"text": {{jsonString .Text}}, "context": {{jsonString .Context}}}'
      hx-swap="innerHTML">
     <div class="loading"><div class="spinner"></div><p>Getting translation...</p></div>
 </div>
