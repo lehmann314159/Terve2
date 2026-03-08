@@ -24,5 +24,6 @@ func (s *Server) setupRoutes() {
 	s.router.Get("/articles", s.handlers.ListArticles)
 	s.router.Get("/article/{id}", s.handlers.ShowArticle)
 	s.router.Post("/analyze", s.handlers.Analyze)
+	s.router.Post("/explain", s.handlers.Explain)
 	s.router.Post("/load-text", s.handlers.LoadCustomText)
 }

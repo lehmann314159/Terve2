@@ -10,16 +10,20 @@ import (
 
 // AnalysisData is passed to the analysis partial template.
 type AnalysisData struct {
-	Text           string
-	Context        string
-	Translation    string
-	Tokens         []voikko.TokenAnalysis
-	Explanation    string
-	VoikkoError    string
-	OllamaError    string
+	Text        string
+	Context     string
+	Tokens      []voikko.TokenAnalysis
+	VoikkoError string
 }
 
-// Analyze handles POST /analyze — the core interaction.
+// ExplainData is passed to the explanation partial template.
+type ExplainData struct {
+	Translation string
+	Explanation string
+	OllamaError string
+}
+
+// Analyze handles POST /analyze — returns morphology immediately.
 func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("text")
 	context := r.FormValue("context")
@@ -31,7 +35,6 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Step 1: Voikko analysis
 	var tokens []voikko.TokenAnalysis
 	var voikkoErr string
 
@@ -43,26 +46,46 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 		tokens = sv.Tokens
 	}
 
-	// Step 2: Single Ollama call for translation + explanation
-	var translation, explanation string
-	var ollamaErr string
+	h.renderPartial(w, "analysis", AnalysisData{
+		Text:        text,
+		Context:     context,
+		Tokens:      tokens,
+		VoikkoError: voikkoErr,
+	})
+}
+
+// Explain handles POST /explain — returns translation + explanation from Ollama.
+func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
+	text := r.FormValue("text")
+	context := r.FormValue("context")
+
+	if text == "" {
+		h.renderPartial(w, "explanation", ExplainData{
+			OllamaError: "No text provided.",
+		})
+		return
+	}
+
+	// Re-run Voikko to get tokens for the prompt (instant)
+	var tokens []voikko.TokenAnalysis
+	sv, err := h.voikko.ValidateSentence(text)
+	if err == nil {
+		tokens = sv.Tokens
+	}
 
 	prompt := ollama.BuildPrompt(text, context, tokens)
 	response, err := h.ollama.Generate(ollama.SystemPrompt, prompt)
 	if err != nil {
 		log.Printf("Ollama error: %v", err)
-		ollamaErr = "LLM response unavailable."
-	} else {
-		translation, explanation = ollama.ParseResponse(response)
+		h.renderPartial(w, "explanation", ExplainData{
+			OllamaError: "LLM response unavailable.",
+		})
+		return
 	}
 
-	h.renderPartial(w, "analysis", AnalysisData{
-		Text:        text,
-		Context:     context,
+	translation, explanation := ollama.ParseResponse(response)
+	h.renderPartial(w, "explanation", ExplainData{
 		Translation: translation,
-		Tokens:      tokens,
 		Explanation: explanation,
-		VoikkoError: voikkoErr,
-		OllamaError: ollamaErr,
 	})
 }
