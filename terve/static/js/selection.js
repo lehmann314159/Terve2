@@ -1,5 +1,14 @@
 // selection.js — Capture word clicks and phrase selections, send to /analyze via htmx.
 
+// Clear previous highlights as soon as a new interaction begins.
+document.addEventListener('mousedown', function(e) {
+    var body = document.getElementById('article-body');
+    if (!body || !body.contains(e.target)) return;
+    body.querySelectorAll('.word.selected').forEach(function(w) {
+        w.classList.remove('selected');
+    });
+});
+
 document.addEventListener('mouseup', function(e) {
     var body = document.getElementById('article-body');
     if (!body || !body.contains(e.target)) return;
