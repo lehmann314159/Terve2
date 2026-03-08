@@ -6,3 +6,8 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	golang.org/x/net v0.51.0
 )
+
+require (
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
+)

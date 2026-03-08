@@ -15,6 +15,19 @@
             <li><a href="/" class="{{if eq .ActivePage "home"}}active{{end}}">Home</a></li>
             <li><a href="/read" class="{{if eq .ActivePage "read"}}active{{end}}">Read</a></li>
         </ul>
+        <div class="nav-auth">
+            {{if .User}}
+                <div class="nav-user">
+                    {{if .User.AvatarURL}}<img class="nav-avatar" src="{{.User.AvatarURL}}" alt="">{{end}}
+                    <span class="nav-username">{{.User.Name}}</span>
+                    <form method="POST" action="/auth/logout" class="nav-logout-form">
+                        <button type="submit" class="nav-logout-btn">Logout</button>
+                    </form>
+                </div>
+            {{else}}
+                <a href="/auth/login" class="nav-login-btn">Sign In</a>
+            {{end}}
+        </div>
     </nav>
 
     <main class="container">

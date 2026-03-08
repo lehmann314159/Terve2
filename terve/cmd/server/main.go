@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/server"
 )
 
@@ -17,7 +18,18 @@ func main() {
 	ollamaURL := envOr("OLLAMA_URL", "http://localhost:11434")
 	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:72b-instruct-q4_K_M")
 
-	srv := server.New(port, voikkoURL, ollamaURL, ollamaModel)
+	authCfg := auth.AuthConfig{
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		GitHubClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+		GitHubClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+		BaseURL:            envOr("BASE_URL", "http://localhost:3000"),
+	}
+
+	sessionSecret := os.Getenv("SESSION_SECRET")
+	sessionEncryptKey := os.Getenv("SESSION_ENCRYPT_KEY")
+
+	srv := server.New(port, voikkoURL, ollamaURL, ollamaModel, authCfg, sessionSecret, sessionEncryptKey)
 
 	log.Printf("Starting Terve on http://localhost:%s", port)
 	log.Printf("Voikko: %s  Ollama: %s  Model: %s", voikkoURL, ollamaURL, ollamaModel)

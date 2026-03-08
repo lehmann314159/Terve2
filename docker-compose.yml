@@ -13,8 +13,10 @@ services:
     depends_on:
       voikko:
         condition: service_healthy
+    ports:
+      - "3001:3000"
     restart: unless-stopped
-    networks: [web, internal]
+    networks: [internal]
 
   voikko:
     image: lehmann314159/terve-voikko:latest
@@ -30,7 +32,5 @@ services:
     networks: [internal]
 
 networks:
-  web:
-    external: true
   internal:
     driver: bridge

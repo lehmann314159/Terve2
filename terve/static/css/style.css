@@ -59,6 +59,55 @@ body {
     background: rgba(255,255,255,0.15);
 }
 
+/* --- Nav Auth --- */
+.nav-auth {
+    margin-left: auto;
+}
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.nav-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+}
+.nav-username {
+    color: rgba(255,255,255,0.9);
+    font-size: 0.9rem;
+}
+.nav-logout-form {
+    display: inline;
+}
+.nav-logout-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: rgba(255,255,255,0.8);
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+.nav-logout-btn:hover {
+    background: rgba(255,255,255,0.25);
+    color: white;
+}
+.nav-login-btn {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    padding: 0.3rem 0.8rem;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,0.3);
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+.nav-login-btn:hover {
+    background: rgba(255,255,255,0.15);
+    color: white;
+}
+
 /* --- Layout --- */
 .container {
     flex: 1;
@@ -267,6 +316,85 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 .htmx-indicator { display: none; color: var(--text-light); font-size: 0.9rem; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+
+/* --- Login Page --- */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+.login-card {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    padding: 2.5rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+}
+.login-card h1 {
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+.login-subtitle {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+.login-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+.oauth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+.oauth-btn:hover { opacity: 0.9; }
+.oauth-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.oauth-google {
+    background: var(--bg-white);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.oauth-github {
+    background: #24292e;
+    color: white;
+}
+.login-notice {
+    padding: 1rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+.login-guest {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+}
+.login-guest a {
+    color: var(--text-light);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+.login-guest a:hover {
+    color: var(--primary);
+}
 
 /* --- Responsive --- */
 @media (max-width: 900px) {

@@ -14,6 +14,12 @@ func (s *Server) setupRoutes() {
 	s.router.Get("/", s.handlers.Home)
 	s.router.Get("/read", s.handlers.ReadingPage)
 
+	// Auth
+	s.router.Get("/auth/login", s.authHandlers.LoginPage)
+	s.router.Get("/auth/{provider}", s.authHandlers.BeginAuth)
+	s.router.Get("/auth/{provider}/callback", s.authHandlers.Callback)
+	s.router.Post("/auth/logout", s.authHandlers.Logout)
+
 	// HTMX partials
 	s.router.Get("/articles", s.handlers.ListArticles)
 	s.router.Get("/article/{id}", s.handlers.ShowArticle)
