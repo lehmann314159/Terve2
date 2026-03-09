@@ -37,6 +37,8 @@ func (h *Handlers) BooksPage(w http.ResponseWriter, r *http.Request) {
 	books, err := h.db.ListBooks()
 	if err != nil {
 		log.Printf("list books: %v", err)
+		http.Error(w, "Failed to load books", http.StatusInternalServerError)
+		return
 	}
 
 	sess := auth.GetSession(r.Context())
@@ -123,23 +125,23 @@ func (h *Handlers) BookReader(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// BookChapter loads a chapter partial (HTMX).
+// BookChapter loads a chapter. Serves a partial for HTMX requests or a full page for direct navigation.
 func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 	bookID, err := strconv.ParseInt(chi.URLParam(r, "bookID"), 10, 64)
 	if err != nil {
-		h.renderPartial(w, "book-chapter", map[string]any{"Error": "Invalid book ID."})
+		http.Error(w, "Invalid book ID", http.StatusBadRequest)
 		return
 	}
 
 	chapterNum, err := strconv.Atoi(chi.URLParam(r, "num"))
 	if err != nil {
-		h.renderPartial(w, "book-chapter", map[string]any{"Error": "Invalid chapter number."})
+		http.Error(w, "Invalid chapter number", http.StatusBadRequest)
 		return
 	}
 
 	chapter, err := h.db.GetChapter(bookID, chapterNum)
 	if err != nil {
-		h.renderPartial(w, "book-chapter", map[string]any{"Error": "Chapter not found."})
+		http.Error(w, "Chapter not found", http.StatusNotFound)
 		return
 	}
 
@@ -151,24 +153,57 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get total chapter count for nav
-	book, _ := h.db.GetBook(bookID)
+	book, err := h.db.GetBook(bookID)
+	if err != nil {
+		http.Error(w, "Book not found", http.StatusNotFound)
+		return
+	}
 
 	tokens, plainText := h.tokenizeText(chapter.Content)
 
+	// Direct browser request: render full reader page
+	if r.Header.Get("HX-Request") == "" {
+		chapters, err := h.db.GetChapters(bookID)
+		if err != nil {
+			log.Printf("get chapters: %v", err)
+			http.Error(w, "Failed to load chapters", http.StatusInternalServerError)
+			return
+		}
+		var bookmark int64
+		if sess != nil {
+			bookmark = h.db.GetBookmark(sess.DBUserID, bookID)
+		}
+		h.render(w, "base", BookReaderData{
+			PageData:       pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
+			Book:           book,
+			Chapters:       chapters,
+			CurrentChapter: chapter,
+			ChapterNumber:  chapterNum,
+			Tokens:         tokens,
+			PlainText:      plainText,
+			Bookmark:       bookmark,
+		})
+		return
+	}
+
+	// HTMX request: render partial
 	h.renderPartial(w, "book-chapter", map[string]any{
-		"Chapter":      chapter,
+		"Chapter":       chapter,
 		"ChapterNumber": chapterNum,
 		"TotalChapters": book.ChapterCount,
-		"BookID":       bookID,
-		"Tokens":       tokens,
-		"PlainText":    plainText,
+		"BookID":        bookID,
+		"Tokens":        tokens,
+		"PlainText":     plainText,
 	})
 }
 
 // SaveBookmark saves a bookmark (called via HTMX POST).
 func (h *Handlers) SaveBookmark(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
+	if sess == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	bookID, err := strconv.ParseInt(chi.URLParam(r, "bookID"), 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid book ID", http.StatusBadRequest)
@@ -248,15 +283,22 @@ func (h *Handlers) ImportBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var failedChapters int
 	for _, ch := range chapters {
 		if _, err := h.db.InsertChapter(bookID, ch.Number, ch.Title, ch.Body); err != nil {
-			log.Printf("insert imported chapter: %v", err)
+			log.Printf("insert imported chapter %d: %v", ch.Number, err)
+			failedChapters++
 		}
 	}
 
+	msg := fmt.Sprintf("Imported %q with %d chapters.", title, len(chapters))
+	if failedChapters > 0 {
+		msg = fmt.Sprintf("Imported %q with %d chapters (%d failed).", title, len(chapters), failedChapters)
+	}
+
 	h.renderPartial(w, "import-result", map[string]any{
-		"Success":  fmt.Sprintf("Imported %q with %d chapters.", title, len(chapters)),
-		"BookID":   bookID,
+		"Success": msg,
+		"BookID":  bookID,
 	})
 }
 
@@ -267,5 +309,5 @@ func (h *Handlers) tokenizeText(text string) ([]voikko.TokenAnalysis, string) {
 		log.Printf("voikko tokenize error: %v", err)
 		return nil, text
 	}
-	return sv.Tokens, ""
+	return sv.Tokens, text
 }

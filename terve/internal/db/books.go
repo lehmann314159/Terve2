@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"log"
 	"time"
 )
 
@@ -183,7 +184,10 @@ func (db *DB) SaveBookmark(userID, bookID, chapterID int64) error {
 // GetBookmark returns the bookmarked chapter ID for a user+book, or 0 if none.
 func (db *DB) GetBookmark(userID, bookID int64) int64 {
 	var chapterID int64
-	db.QueryRow(`SELECT chapter_id FROM user_bookmarks WHERE user_id = ? AND book_id = ?`, userID, bookID).Scan(&chapterID)
+	err := db.QueryRow(`SELECT chapter_id FROM user_bookmarks WHERE user_id = ? AND book_id = ?`, userID, bookID).Scan(&chapterID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("get bookmark (user=%d, book=%d): %v", userID, bookID, err)
+	}
 	return chapterID
 }
 
@@ -207,6 +211,9 @@ func (db *DB) GetUserBookmarks(userID int64) map[int64]int64 {
 // BookExistsByGutenbergID checks if a book with the given Gutenberg ID already exists.
 func (db *DB) BookExistsByGutenbergID(gutenbergID int) bool {
 	var exists int
-	db.QueryRow(`SELECT 1 FROM books WHERE gutenberg_id = ?`, gutenbergID).Scan(&exists)
+	err := db.QueryRow(`SELECT 1 FROM books WHERE gutenberg_id = ?`, gutenbergID).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("check book exists (gutenberg_id=%d): %v", gutenbergID, err)
+	}
 	return exists == 1
 }
