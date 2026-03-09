@@ -633,6 +633,87 @@ func TestGetRandomUserCardWithTranslation(t *testing.T) {
 	}
 }
 
+func TestGetWeightedRandomUserCard(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "wrnd1", "Weighted User", "", "")
+	cardID, _ := db.CreateCard(&Card{Finnish: "painotettu", Lemma: "painotettu", WordClass: "adjective", Translation: "weighted"})
+	db.SaveUserCard(userID, cardID)
+
+	card, err := db.GetWeightedRandomUserCard(userID, nil)
+	if err != nil {
+		t.Fatalf("GetWeightedRandomUserCard: %v", err)
+	}
+	if card == nil {
+		t.Fatal("expected non-nil card")
+	}
+	if card.Finnish != "painotettu" {
+		t.Errorf("finnish = %q, want %q", card.Finnish, "painotettu")
+	}
+}
+
+func TestGetWeightedRandomUserCard_ExcludeIDs(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "wrnd2", "Weighted User 2", "", "")
+
+	c1, _ := db.CreateCard(&Card{Finnish: "ensimmäinen_w", Lemma: "ensimmäinen_w", WordClass: "adjective"})
+	c2, _ := db.CreateCard(&Card{Finnish: "toinen_w", Lemma: "toinen_w", WordClass: "adjective"})
+	db.SaveUserCard(userID, c1)
+	db.SaveUserCard(userID, c2)
+
+	// Exclude c1, should only get c2
+	card, err := db.GetWeightedRandomUserCard(userID, []int64{c1})
+	if err != nil {
+		t.Fatalf("GetWeightedRandomUserCard with exclude: %v", err)
+	}
+	if card.ID != c2 {
+		t.Errorf("expected card ID %d, got %d", c2, card.ID)
+	}
+}
+
+func TestGetWeightedRandomUserCardWithTranslation(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "wrnd3", "Weighted User 3", "", "")
+
+	// Card with translation
+	c1, _ := db.CreateCard(&Card{Finnish: "hyvä_w", Lemma: "hyvä_w", WordClass: "adjective", Translation: "good"})
+	db.SaveUserCard(userID, c1)
+
+	// Card without translation
+	c2, _ := db.CreateCard(&Card{Finnish: "tyhjä_w", Lemma: "tyhjä_w", WordClass: "adjective"})
+	db.SaveUserCard(userID, c2)
+
+	card, err := db.GetWeightedRandomUserCardWithTranslation(userID, nil)
+	if err != nil {
+		t.Fatalf("GetWeightedRandomUserCardWithTranslation: %v", err)
+	}
+	if card.Translation == "" {
+		t.Error("expected card with non-empty translation")
+	}
+}
+
+func TestGetWeightedRandomUserCardWithTranslation_ExcludeIDs(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "wrnd4", "Weighted User 4", "", "")
+
+	c1, _ := db.CreateCard(&Card{Finnish: "eka_w", Lemma: "eka_w", WordClass: "noun", Translation: "first"})
+	c2, _ := db.CreateCard(&Card{Finnish: "toka_w", Lemma: "toka_w", WordClass: "noun", Translation: "second"})
+	db.SaveUserCard(userID, c1)
+	db.SaveUserCard(userID, c2)
+
+	// Exclude c1
+	card, err := db.GetWeightedRandomUserCardWithTranslation(userID, []int64{c1})
+	if err != nil {
+		t.Fatalf("GetWeightedRandomUserCardWithTranslation with exclude: %v", err)
+	}
+	if card.ID != c2 {
+		t.Errorf("expected card ID %d, got %d", c2, card.ID)
+	}
+}
+
 func TestGetRandomUserCards_Distractors(t *testing.T) {
 	db := testDB(t)
 

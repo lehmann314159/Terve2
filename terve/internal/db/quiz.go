@@ -1,6 +1,10 @@
 package db
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // QuizResult represents a completed quiz session.
 type QuizResult struct {
@@ -116,6 +120,76 @@ func (db *DB) GetRandomUserCardWithTranslation(userID int64) (*Card, error) {
 		LIMIT 1
 	`, userID)
 
+	var c Card
+	err := row.Scan(&c.ID, &c.Finnish, &c.Lemma, &c.WordClass, &c.Morphology,
+		&c.Translation, &c.Explanation, &c.Context, &c.Source, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// excludeClause builds a SQL NOT IN clause and args for card ID exclusion.
+// Returns empty string and nil args if excludeIDs is empty.
+func excludeClause(excludeIDs []int64) (string, []any) {
+	if len(excludeIDs) == 0 {
+		return "", nil
+	}
+	placeholders := make([]string, len(excludeIDs))
+	args := make([]any, len(excludeIDs))
+	for i, id := range excludeIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	return fmt.Sprintf(" AND c.id NOT IN (%s)", strings.Join(placeholders, ",")), args
+}
+
+// GetWeightedRandomUserCard returns a card biased toward weaker SRS cards.
+// Cards with low ease_factor and short intervals are more likely to be selected.
+// excludeIDs prevents cards already used in the current session from appearing.
+func (db *DB) GetWeightedRandomUserCard(userID int64, excludeIDs []int64) (*Card, error) {
+	excl, exclArgs := excludeClause(excludeIDs)
+	q := fmt.Sprintf(`
+		SELECT c.id, c.finnish, c.lemma, c.word_class, c.morphology,
+		       c.translation, c.explanation, c.context, c.source, c.created_at
+		FROM user_cards uc
+		JOIN cards c ON c.id = uc.card_id
+		WHERE uc.user_id = ?%s
+		ORDER BY RANDOM() / (uc.ease_factor * (uc.interval_days + 1) + 1) DESC
+		LIMIT 1
+	`, excl)
+
+	args := []any{userID}
+	args = append(args, exclArgs...)
+
+	row := db.QueryRow(q, args...)
+	var c Card
+	err := row.Scan(&c.ID, &c.Finnish, &c.Lemma, &c.WordClass, &c.Morphology,
+		&c.Translation, &c.Explanation, &c.Context, &c.Source, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+// GetWeightedRandomUserCardWithTranslation is like GetWeightedRandomUserCard
+// but only returns cards with a non-empty translation.
+func (db *DB) GetWeightedRandomUserCardWithTranslation(userID int64, excludeIDs []int64) (*Card, error) {
+	excl, exclArgs := excludeClause(excludeIDs)
+	q := fmt.Sprintf(`
+		SELECT c.id, c.finnish, c.lemma, c.word_class, c.morphology,
+		       c.translation, c.explanation, c.context, c.source, c.created_at
+		FROM user_cards uc
+		JOIN cards c ON c.id = uc.card_id
+		WHERE uc.user_id = ? AND c.translation != ''%s
+		ORDER BY RANDOM() / (uc.ease_factor * (uc.interval_days + 1) + 1) DESC
+		LIMIT 1
+	`, excl)
+
+	args := []any{userID}
+	args = append(args, exclArgs...)
+
+	row := db.QueryRow(q, args...)
 	var c Card
 	err := row.Scan(&c.ID, &c.Finnish, &c.Lemma, &c.WordClass, &c.Morphology,
 		&c.Translation, &c.Explanation, &c.Context, &c.Source, &c.CreatedAt)

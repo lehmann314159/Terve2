@@ -6,11 +6,16 @@
     </div>
 
     <div class="quiz-types">
-        <a href="/quiz/case-id" class="quiz-type-card">
+        <div class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F50D;</div>
             <h2>Case Identification</h2>
             <p>Identify the grammatical case of Finnish words</p>
-        </a>
+            <div class="quiz-level-picker">
+                <a href="/quiz/case-id?level=A1-A2" class="quiz-level-btn">A1-A2</a>
+                <a href="/quiz/case-id?level=B1" class="quiz-level-btn">B1</a>
+                <a href="/quiz/case-id?level=B2%2B" class="quiz-level-btn">B2+</a>
+            </div>
+        </div>
 
         <a href="/quiz/form-english" class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F4AC;</div>
@@ -81,7 +86,7 @@
     </div>
 
     <div id="quiz-area"
-         hx-get="/quiz/{{.QuizSlug}}/question?q=1&s=0"
+         hx-get="/quiz/{{.QuizSlug}}/question?q=1&amp;s=0{{if .Level}}&amp;level={{.Level}}&amp;used={{end}}"
          hx-trigger="load"
          hx-swap="innerHTML">
         <div class="loading"><div class="spinner"></div><p>Loading question...</p></div>
@@ -103,6 +108,8 @@
             <input type="hidden" name="word" value="{{$.Word}}">
             <input type="hidden" name="q" value="{{$.QuestionNum}}">
             <input type="hidden" name="s" value="{{$.Score}}">
+            <input type="hidden" name="level" value="{{$.Level}}">
+            <input type="hidden" name="used" value="{{$.UsedIDs}}">
             <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
         </form>
         {{end}}
@@ -127,6 +134,7 @@
             <input type="hidden" name="word" value="{{$.Word}}">
             <input type="hidden" name="q" value="{{$.QuestionNum}}">
             <input type="hidden" name="s" value="{{$.Score}}">
+            <input type="hidden" name="used" value="{{$.UsedIDs}}">
             <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
         </form>
         {{end}}
@@ -145,7 +153,7 @@
 
     {{if lt .QuestionNum .Total}}
     <button class="btn quiz-next-btn"
-            hx-get="/quiz/{{.QuizSlug}}/question?q={{add .QuestionNum 1}}&s={{.Score}}"
+            hx-get="/quiz/{{.QuizSlug}}/question?q={{add .QuestionNum 1}}&amp;s={{.Score}}{{if .Level}}&amp;level={{.Level}}{{end}}&amp;used={{.UsedIDs}}"
             hx-target="#quiz-area"
             hx-swap="innerHTML">
         Next Question &rarr;
