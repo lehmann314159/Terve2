@@ -1,0 +1,209 @@
+{{define "quiz-content"}}
+<div class="quiz-page">
+    <div class="quiz-header">
+        <h1>Quiz</h1>
+        <p class="quiz-subtitle">Test your Finnish grammar and vocabulary</p>
+    </div>
+
+    <div class="quiz-types">
+        <a href="/quiz/case-id" class="quiz-type-card">
+            <div class="quiz-type-icon">&#x1F50D;</div>
+            <h2>Case Identification</h2>
+            <p>Identify the grammatical case of Finnish words</p>
+        </a>
+
+        <a href="/quiz/form-english" class="quiz-type-card">
+            <div class="quiz-type-icon">&#x1F4AC;</div>
+            <h2>Form to English</h2>
+            <p>Match Finnish word forms to their English translations</p>
+        </a>
+
+        <div class="quiz-type-card quiz-type-locked">
+            <div class="quiz-type-icon">&#x1F4DD;</div>
+            <h2>Declension</h2>
+            <p>Fill in all case forms of a noun</p>
+            <span class="quiz-coming-soon">Coming Soon</span>
+        </div>
+
+        <div class="quiz-type-card quiz-type-locked">
+            <div class="quiz-type-icon">&#x1F504;</div>
+            <h2>Conjugation</h2>
+            <p>Fill in all person forms of a verb</p>
+            <span class="quiz-coming-soon">Coming Soon</span>
+        </div>
+
+        <div class="quiz-type-card quiz-type-locked">
+            <div class="quiz-type-icon">&#x2702;</div>
+            <h2>Cloze</h2>
+            <p>Fill in the missing word from a sentence</p>
+            <span class="quiz-coming-soon">Coming Soon</span>
+        </div>
+
+        <div class="quiz-type-card quiz-type-locked">
+            <div class="quiz-type-icon">&#x1F310;</div>
+            <h2>Sentence Translation</h2>
+            <p>Translate Finnish sentences to English</p>
+            <span class="quiz-coming-soon">Coming Soon</span>
+        </div>
+    </div>
+
+    {{if .RecentResults}}
+    <div class="quiz-recent">
+        <h3>Recent Results</h3>
+        <table class="quiz-recent-table">
+            <thead>
+                <tr>
+                    <th>Quiz Type</th>
+                    <th>Score</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .RecentResults}}
+                <tr>
+                    <td>{{.QuizType}}</td>
+                    <td>{{.Correct}}/{{.Total}}</td>
+                    <td class="quiz-recent-date">{{.CreatedAt.Format "Jan 2, 3:04 PM"}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "quiz-session-content"}}
+<div class="quiz-session">
+    <div class="quiz-session-header">
+        <a href="/quiz" class="btn btn-back">&larr; Quiz Hub</a>
+        <h2>{{.QuizTitle}}</h2>
+    </div>
+
+    <div id="quiz-area"
+         hx-get="/quiz/{{.QuizSlug}}/question?q=1&s=0"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <div class="loading"><div class="spinner"></div><p>Loading question...</p></div>
+    </div>
+</div>
+{{end}}
+
+{{define "case-id-question"}}
+<div class="quiz-question">
+    <div class="quiz-progress">Question {{.QuestionNum}} of {{.Total}} &mdash; Score: {{.Score}}</div>
+    <div class="quiz-prompt">What is the grammatical case of this word?</div>
+    <div class="quiz-word">{{.Word}}</div>
+    {{if and (ne .Lemma .Word) .Lemma}}<div class="quiz-hint">Lemma: {{.Lemma}}{{if .WordClass}} ({{.WordClass}}){{end}}</div>{{end}}
+    <div class="quiz-options">
+        {{range .Options}}
+        <form hx-post="/quiz/case-id/answer" hx-target="#quiz-area" hx-swap="innerHTML" style="display:contents">
+            <input type="hidden" name="selected" value="{{.Value}}">
+            <input type="hidden" name="correct" value="{{$.CorrectValue}}">
+            <input type="hidden" name="word" value="{{$.Word}}">
+            <input type="hidden" name="q" value="{{$.QuestionNum}}">
+            <input type="hidden" name="s" value="{{$.Score}}">
+            <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "form-english-question"}}
+<div class="quiz-question">
+    <div class="quiz-progress">Question {{.QuestionNum}} of {{.Total}} &mdash; Score: {{.Score}}</div>
+    <div class="quiz-prompt">What does this word mean in English?</div>
+    <div class="quiz-word">{{.Word}}</div>
+    <div class="quiz-hint">
+        {{if and (ne .Lemma .Word) .Lemma}}Lemma: {{.Lemma}}{{end}}
+        {{if .Morphology}} &mdash; {{.Morphology}}{{end}}
+    </div>
+    <div class="quiz-options">
+        {{range .Options}}
+        <form hx-post="/quiz/form-english/answer" hx-target="#quiz-area" hx-swap="innerHTML" style="display:contents">
+            <input type="hidden" name="selected" value="{{.Value}}">
+            <input type="hidden" name="correct" value="{{$.CorrectValue}}">
+            <input type="hidden" name="word" value="{{$.Word}}">
+            <input type="hidden" name="q" value="{{$.QuestionNum}}">
+            <input type="hidden" name="s" value="{{$.Score}}">
+            <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "quiz-answer"}}
+<div class="quiz-answer {{if .Correct}}quiz-correct{{else}}quiz-incorrect{{end}}">
+    <div class="quiz-feedback-icon">{{if .Correct}}&#x2705;{{else}}&#x274C;{{end}}</div>
+    <div class="quiz-feedback-text">{{if .Correct}}Correct!{{else}}Incorrect{{end}}</div>
+    {{if not .Correct}}
+    <div class="quiz-feedback-detail">You answered: <strong>{{.SelectedValue}}</strong></div>
+    {{end}}
+    <div class="quiz-feedback-detail">{{.Explanation}}</div>
+
+    {{if lt .QuestionNum .Total}}
+    <button class="btn quiz-next-btn"
+            hx-get="/quiz/{{.QuizSlug}}/question?q={{add .QuestionNum 1}}&s={{.Score}}"
+            hx-target="#quiz-area"
+            hx-swap="innerHTML">
+        Next Question &rarr;
+    </button>
+    {{else}}
+    <form hx-post="/quiz/results" hx-target="#quiz-area" hx-swap="innerHTML">
+        <input type="hidden" name="quiz_type" value="{{.QuizSlug}}">
+        <input type="hidden" name="quiz_slug" value="{{.QuizSlug}}">
+        <input type="hidden" name="total" value="{{.Total}}">
+        <input type="hidden" name="correct" value="{{.Score}}">
+        <button type="submit" class="btn quiz-next-btn">See Results &rarr;</button>
+    </form>
+    {{end}}
+</div>
+{{end}}
+
+{{define "quiz-results"}}
+<div class="quiz-results-card">
+    <h2>Quiz Complete!</h2>
+    <div class="quiz-score-num">{{.Correct}} / {{.Total}}</div>
+    <div class="quiz-score-pct">{{.Percent}}%</div>
+    <div class="quiz-score-message">
+        {{if ge .Percent 90}}Excellent work!
+        {{else if ge .Percent 70}}Good job!
+        {{else if ge .Percent 50}}Keep practicing!
+        {{else}}Don't give up &mdash; review your flashcards and try again!
+        {{end}}
+    </div>
+
+    {{if .Recent}}
+    <div class="quiz-results-recent">
+        <h3>Recent Attempts</h3>
+        <table class="quiz-recent-table">
+            <thead>
+                <tr><th>Score</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {{range .Recent}}
+                <tr>
+                    <td>{{.Correct}}/{{.Total}}</td>
+                    <td class="quiz-recent-date">{{.CreatedAt.Format "Jan 2, 3:04 PM"}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{end}}
+
+    <div class="quiz-results-actions">
+        <a href="/quiz/{{.QuizSlug}}" class="btn">Try Again</a>
+        <a href="/quiz" class="btn btn-back">Back to Quiz Hub</a>
+    </div>
+</div>
+{{end}}
+
+{{define "quiz-error"}}
+<div class="quiz-error">
+    <div class="error-msg">{{.Error}}</div>
+    <a href="/quiz" class="btn btn-back">Back to Quiz Hub</a>
+</div>
+{{end}}

@@ -16,6 +16,7 @@
             <li><a href="/read" class="{{if eq .ActivePage "read"}}active{{end}}">Read</a></li>
             <li><a href="/books" class="{{if or (eq .ActivePage "books") (eq .ActivePage "book-reader")}}active{{end}}">Books</a></li>
             {{if .User}}<li><a href="/flashcards" class="{{if eq .ActivePage "flashcards"}}active{{end}}">Flashcards</a></li>{{end}}
+            {{if .User}}<li><a href="/quiz" class="{{if or (eq .ActivePage "quiz") (eq .ActivePage "quiz-session")}}active{{end}}">Quiz</a></li>{{end}}
         </ul>
         <div class="nav-auth">
             {{if .User}}
@@ -52,5 +53,7 @@
 {{else if eq .ActivePage "flashcards"}}{{template "flashcards-content" .}}
 {{else if eq .ActivePage "books"}}{{template "books-content" .}}
 {{else if eq .ActivePage "book-reader"}}{{template "book-reader-content" .}}
+{{else if eq .ActivePage "quiz"}}{{template "quiz-content" .}}
+{{else if eq .ActivePage "quiz-session"}}{{template "quiz-session-content" .}}
 {{end}}
 {{end}}

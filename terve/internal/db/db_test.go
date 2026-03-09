@@ -555,3 +555,114 @@ func TestDeleteUserCard(t *testing.T) {
 		t.Error("expected error after deleting user_card")
 	}
 }
+
+// --- Quiz tests ---
+
+func TestSaveQuizResult_AndGetRecent(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "qz1", "Quiz User", "", "")
+
+	err := db.SaveQuizResult(userID, "case_id", 10, 7)
+	if err != nil {
+		t.Fatalf("SaveQuizResult: %v", err)
+	}
+
+	err = db.SaveQuizResult(userID, "form_english", 10, 9)
+	if err != nil {
+		t.Fatalf("SaveQuizResult: %v", err)
+	}
+
+	// Get all types
+	results, err := db.GetRecentQuizResults(userID, "", 10)
+	if err != nil {
+		t.Fatalf("GetRecentQuizResults (all): %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
+
+	// Get specific type
+	results, err = db.GetRecentQuizResults(userID, "case_id", 10)
+	if err != nil {
+		t.Fatalf("GetRecentQuizResults (case_id): %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("expected 1 result for case_id, got %d", len(results))
+	}
+	if results[0].Correct != 7 || results[0].Total != 10 {
+		t.Errorf("expected 7/10, got %d/%d", results[0].Correct, results[0].Total)
+	}
+}
+
+func TestGetRandomUserCard(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "rnd1", "Random User", "", "")
+	cardID, _ := db.CreateCard(&Card{Finnish: "satunnainen", Lemma: "satunnainen", WordClass: "adjective", Translation: "random"})
+	db.SaveUserCard(userID, cardID)
+
+	card, err := db.GetRandomUserCard(userID)
+	if err != nil {
+		t.Fatalf("GetRandomUserCard: %v", err)
+	}
+	if card == nil {
+		t.Fatal("expected non-nil card")
+	}
+}
+
+func TestGetRandomUserCardWithTranslation(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "rnd2", "Random User 2", "", "")
+
+	// Card with translation
+	c1, _ := db.CreateCard(&Card{Finnish: "hyvä", Lemma: "hyvä", WordClass: "adjective", Translation: "good"})
+	db.SaveUserCard(userID, c1)
+
+	// Card without translation
+	c2, _ := db.CreateCard(&Card{Finnish: "tyhjä", Lemma: "tyhjä", WordClass: "adjective"})
+	db.SaveUserCard(userID, c2)
+
+	card, err := db.GetRandomUserCardWithTranslation(userID)
+	if err != nil {
+		t.Fatalf("GetRandomUserCardWithTranslation: %v", err)
+	}
+	if card.Translation == "" {
+		t.Error("expected card with non-empty translation")
+	}
+}
+
+func TestGetRandomUserCards_Distractors(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "rnd3", "Random User 3", "", "")
+
+	// Create several cards with unique names and translations, track IDs
+	var cardIDs []int64
+	for _, w := range []struct{ fi, en string }{
+		{"quiztesti_a", "quiz test a"},
+		{"quiztesti_b", "quiz test b"},
+		{"quiztesti_c", "quiz test c"},
+		{"quiztesti_d", "quiz test d"},
+	} {
+		cid, _ := db.CreateCard(&Card{Finnish: w.fi, Lemma: w.fi, WordClass: "noun", Translation: w.en})
+		db.SaveUserCard(userID, cid)
+		cardIDs = append(cardIDs, cid)
+	}
+
+	// Get 3 distractors excluding the first card
+	excludeID := cardIDs[0]
+	cards, err := db.GetRandomUserCards(userID, excludeID, 3)
+	if err != nil {
+		t.Fatalf("GetRandomUserCards: %v", err)
+	}
+	if len(cards) < 1 {
+		t.Errorf("expected at least 1 distractor card, got %d", len(cards))
+	}
+	for _, c := range cards {
+		if c.ID == excludeID {
+			t.Error("excluded card should not appear in results")
+		}
+	}
+}

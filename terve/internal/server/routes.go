@@ -43,6 +43,19 @@ func (s *Server) setupRoutes() {
 		})
 	})
 
+	// Quiz (requires auth)
+	s.router.Route("/quiz", func(r chi.Router) {
+		r.Use(auth.RequireAuth)
+		r.Get("/", s.handlers.QuizHub)
+		r.Get("/case-id", s.handlers.CaseIDPage)
+		r.Get("/case-id/question", s.handlers.CaseIDQuestion)
+		r.Post("/case-id/answer", s.handlers.CaseIDAnswer)
+		r.Get("/form-english", s.handlers.FormEnglishPage)
+		r.Get("/form-english/question", s.handlers.FormEnglishQuestion)
+		r.Post("/form-english/answer", s.handlers.FormEnglishAnswer)
+		r.Post("/results", s.handlers.QuizResults)
+	})
+
 	// Flashcards (requires auth)
 	s.router.Route("/flashcards", func(r chi.Router) {
 		r.Use(auth.RequireAuth)

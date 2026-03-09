@@ -148,6 +148,35 @@ func (db *DB) migrate() error {
 	// Migration for existing DBs: add paragraph column if missing.
 	db.Exec(`ALTER TABLE user_bookmarks ADD COLUMN paragraph INTEGER NOT NULL DEFAULT 0`)
 
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS quiz_results (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id    INTEGER NOT NULL REFERENCES users(id),
+			quiz_type  TEXT NOT NULL,
+			total      INTEGER NOT NULL,
+			correct    INTEGER NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS paradigms (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			lemma      TEXT NOT NULL,
+			word_class TEXT NOT NULL,
+			tense      TEXT NOT NULL DEFAULT '',
+			forms_json TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(lemma, word_class, tense)
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
 	if err := db.seedCards(); err != nil {
 		return err
 	}
