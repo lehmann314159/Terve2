@@ -26,9 +26,9 @@ document.addEventListener('mouseup', function(e) {
 
     if (!text) return;
 
-    // Get sentence context from the parent paragraph or tokenized-text div
+    // Get sentence context from the parent paragraph div
     var context = '';
-    var parent = e.target.closest('p, .tokenized-text');
+    var parent = e.target.closest('.paragraph, p, .tokenized-text');
     if (parent) {
         context = parent.textContent.trim();
     }
@@ -65,3 +65,61 @@ document.addEventListener('mouseup', function(e) {
     // Clear browser text selection (visual highlight stays via .selected class)
     sel.removeAllRanges();
 });
+
+// --- Paragraph bookmark ---
+
+// Save a paragraph-level bookmark via POST.
+function saveParaBookmark(bookID, chapterID, paragraph, btn) {
+    var formData = new FormData();
+    formData.append('chapter_id', chapterID);
+    formData.append('paragraph', paragraph);
+    fetch('/books/' + bookID + '/bookmark', {
+        method: 'POST',
+        body: formData
+    }).then(function(resp) {
+        if (resp.ok) {
+            // Remove previous saved state
+            document.querySelectorAll('.bookmark-btn.saved').forEach(function(b) {
+                b.classList.remove('saved');
+            });
+            btn.classList.add('saved');
+            // Update data attribute for scroll-on-return
+            var cc = document.getElementById('chapter-content');
+            if (cc) {
+                cc.setAttribute('data-bookmark-paragraph', paragraph);
+            }
+        }
+    });
+}
+
+// Scroll to bookmarked paragraph on load and after HTMX swaps.
+(function() {
+    function scrollToBookmark() {
+        var cc = document.getElementById('chapter-content');
+        if (!cc) return;
+        var p = parseInt(cc.getAttribute('data-bookmark-paragraph'), 10);
+        if (!p || p === 0) return;
+        var target = document.getElementById('p-' + p);
+        if (!target) return;
+        target.classList.add('bookmarked');
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // On initial page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scrollToBookmark);
+    } else {
+        scrollToBookmark();
+    }
+
+    // After HTMX swaps in new chapter content
+    document.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target && e.detail.target.id === 'chapter-content') {
+            // Clear bookmark paragraph on chapter navigation (auto-save sets paragraph=0)
+            var cc = document.getElementById('chapter-content');
+            if (cc && !cc.getAttribute('data-bookmark-paragraph')) {
+                return;
+            }
+        }
+    });
+})();

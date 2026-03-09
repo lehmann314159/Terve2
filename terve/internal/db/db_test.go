@@ -253,14 +253,17 @@ func TestSaveBookmark_AndGetBookmark(t *testing.T) {
 	bookID, _ := db.InsertBook("Bookmark Book", "Author", "", &gid, "test")
 	chID, _ := db.InsertChapter(bookID, 1, "Ch1", "Content")
 
-	err := db.SaveBookmark(userID, bookID, chID)
+	err := db.SaveBookmark(userID, bookID, chID, 0)
 	if err != nil {
 		t.Fatalf("SaveBookmark: %v", err)
 	}
 
-	got := db.GetBookmark(userID, bookID)
-	if got != chID {
-		t.Errorf("GetBookmark = %d, want %d", got, chID)
+	gotCh, gotPar := db.GetBookmark(userID, bookID)
+	if gotCh != chID {
+		t.Errorf("GetBookmark chapterID = %d, want %d", gotCh, chID)
+	}
+	if gotPar != 0 {
+		t.Errorf("GetBookmark paragraph = %d, want 0", gotPar)
 	}
 }
 
@@ -273,10 +276,10 @@ func TestSaveBookmark_Upsert(t *testing.T) {
 	ch1, _ := db.InsertChapter(bookID, 1, "Ch1", "Content 1")
 	ch2, _ := db.InsertChapter(bookID, 2, "Ch2", "Content 2")
 
-	db.SaveBookmark(userID, bookID, ch1)
-	db.SaveBookmark(userID, bookID, ch2) // update
+	db.SaveBookmark(userID, bookID, ch1, 0)
+	db.SaveBookmark(userID, bookID, ch2, 0) // update
 
-	got := db.GetBookmark(userID, bookID)
+	got, _ := db.GetBookmark(userID, bookID)
 	if got != ch2 {
 		t.Errorf("GetBookmark after upsert = %d, want %d", got, ch2)
 	}
@@ -286,9 +289,42 @@ func TestGetBookmark_NoBookmark(t *testing.T) {
 	db := testDB(t)
 
 	userID, _ := db.UpsertUser("google", "bm3", "User", "", "")
-	got := db.GetBookmark(userID, 99999)
+	got, gotPar := db.GetBookmark(userID, 99999)
 	if got != 0 {
 		t.Errorf("GetBookmark with no bookmark = %d, want 0", got)
+	}
+	if gotPar != 0 {
+		t.Errorf("GetBookmark paragraph with no bookmark = %d, want 0", gotPar)
+	}
+}
+
+func TestSaveBookmark_ParagraphRoundTrip(t *testing.T) {
+	db := testDB(t)
+
+	userID, _ := db.UpsertUser("google", "bm5", "User", "", "")
+	gid := 11111
+	bookID, _ := db.InsertBook("Paragraph Book", "Author", "", &gid, "test")
+	chID, _ := db.InsertChapter(bookID, 1, "Ch1", "Content")
+
+	// Save with paragraph=5
+	err := db.SaveBookmark(userID, bookID, chID, 5)
+	if err != nil {
+		t.Fatalf("SaveBookmark: %v", err)
+	}
+
+	gotCh, gotPar := db.GetBookmark(userID, bookID)
+	if gotCh != chID {
+		t.Errorf("chapterID = %d, want %d", gotCh, chID)
+	}
+	if gotPar != 5 {
+		t.Errorf("paragraph = %d, want 5", gotPar)
+	}
+
+	// Update to paragraph=3
+	db.SaveBookmark(userID, bookID, chID, 3)
+	_, gotPar = db.GetBookmark(userID, bookID)
+	if gotPar != 3 {
+		t.Errorf("paragraph after update = %d, want 3", gotPar)
 	}
 }
 
@@ -302,8 +338,8 @@ func TestGetUserBookmarks(t *testing.T) {
 	ch1, _ := db.InsertChapter(book1, 1, "Ch1", "C")
 	ch2, _ := db.InsertChapter(book2, 1, "Ch1", "C")
 
-	db.SaveBookmark(userID, book1, ch1)
-	db.SaveBookmark(userID, book2, ch2)
+	db.SaveBookmark(userID, book1, ch1, 0)
+	db.SaveBookmark(userID, book2, ch2, 0)
 
 	bm := db.GetUserBookmarks(userID)
 	if len(bm) != 2 {

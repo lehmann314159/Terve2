@@ -33,6 +33,7 @@ type UserBookmark struct {
 	UserID    int64
 	BookID    int64
 	ChapterID int64
+	Paragraph int
 	UpdatedAt time.Time
 }
 
@@ -170,25 +171,27 @@ func (db *DB) GetChapters(bookID int64) ([]BookChapter, error) {
 }
 
 // SaveBookmark saves or updates a user's bookmark for a book.
-func (db *DB) SaveBookmark(userID, bookID, chapterID int64) error {
+func (db *DB) SaveBookmark(userID, bookID, chapterID int64, paragraph int) error {
 	_, err := db.Exec(`
-		INSERT INTO user_bookmarks (user_id, book_id, chapter_id)
-		VALUES (?, ?, ?)
+		INSERT INTO user_bookmarks (user_id, book_id, chapter_id, paragraph)
+		VALUES (?, ?, ?, ?)
 		ON CONFLICT(user_id, book_id) DO UPDATE SET
 			chapter_id = excluded.chapter_id,
+			paragraph  = excluded.paragraph,
 			updated_at = CURRENT_TIMESTAMP
-	`, userID, bookID, chapterID)
+	`, userID, bookID, chapterID, paragraph)
 	return err
 }
 
-// GetBookmark returns the bookmarked chapter ID for a user+book, or 0 if none.
-func (db *DB) GetBookmark(userID, bookID int64) int64 {
+// GetBookmark returns the bookmarked chapter ID and paragraph for a user+book, or (0, 0) if none.
+func (db *DB) GetBookmark(userID, bookID int64) (int64, int) {
 	var chapterID int64
-	err := db.QueryRow(`SELECT chapter_id FROM user_bookmarks WHERE user_id = ? AND book_id = ?`, userID, bookID).Scan(&chapterID)
+	var paragraph int
+	err := db.QueryRow(`SELECT chapter_id, paragraph FROM user_bookmarks WHERE user_id = ? AND book_id = ?`, userID, bookID).Scan(&chapterID, &paragraph)
 	if err != nil && err != sql.ErrNoRows {
 		log.Printf("get bookmark (user=%d, book=%d): %v", userID, bookID, err)
 	}
-	return chapterID
+	return chapterID, paragraph
 }
 
 // GetUserBookmarks returns a map of bookID→chapterID for the given user.

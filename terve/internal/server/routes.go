@@ -53,6 +53,7 @@ func (s *Server) setupRoutes() {
 		r.Post("/add", s.handlers.AddFlashcard)
 		r.Delete("/{cardID}", s.handlers.DeleteFlashcard)
 		r.Post("/{cardID}/focus", s.handlers.ToggleFocus)
+		r.Post("/{cardID}/focus-review", s.handlers.ToggleFocusReview)
 		r.Get("/review", s.handlers.ReviewSession)
 		r.Post("/review/{userCardID}", s.handlers.SubmitReview)
 	})

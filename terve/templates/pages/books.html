@@ -78,19 +78,33 @@
             {{end}}
         </div>
 
-        <div id="chapter-content">
+        <div id="chapter-content" data-bookmark-paragraph="{{.BookmarkParagraph}}" data-book-id="{{.Book.ID}}" data-chapter-id="{{.CurrentChapter.ID}}">
             <div id="article-body" class="article-body">
                 {{if .CurrentChapter.Title}}<h3 class="chapter-title">{{.CurrentChapter.Title}}</h3>{{end}}
-                {{if .Tokens}}
+                {{if .Paragraphs}}
                 <div class="tokenized-text">
-                {{- range .Tokens -}}
-                {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
-                {{- else -}}<span class="punct">{{.Token}}</span>
-                {{- end -}}
-                {{- end -}}
+                {{- range .Paragraphs}}
+                <div class="paragraph" id="p-{{.Number}}">
+                    {{- if $.LoggedIn}}<button class="bookmark-btn" title="Bookmark this paragraph"
+                        onclick="saveParaBookmark({{$.Book.ID}}, {{$.CurrentChapter.ID}}, {{.Number}}, this)">&#x1F516;</button>{{end -}}
+                    {{- range .Tokens -}}
+                    {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
+                    {{- else -}}<span class="punct">{{.Token}}</span>
+                    {{- end -}}
+                    {{- end -}}
                 </div>
-                {{else if .PlainText}}
-                <div class="plain-text">{{.PlainText}}</div>
+                {{- end}}
+                </div>
+                {{else if .PlainParagraphs}}
+                <div class="plain-text">
+                {{- range .PlainParagraphs}}
+                <div class="paragraph" id="p-{{.Number}}">
+                    {{- if $.LoggedIn}}<button class="bookmark-btn" title="Bookmark this paragraph"
+                        onclick="saveParaBookmark({{$.Book.ID}}, {{$.CurrentChapter.ID}}, {{.Number}}, this)">&#x1F516;</button>{{end -}}
+                    {{.Text}}
+                </div>
+                {{- end}}
+                </div>
                 {{end}}
             </div>
         </div>
@@ -129,18 +143,32 @@
 {{if .Error}}
 <div class="error-msg">{{.Error}}</div>
 {{else}}
-<div id="article-body" class="article-body">
+<div id="article-body" class="article-body" data-book-id="{{.BookID}}" data-chapter-id="{{.Chapter.ID}}">
     {{if .Chapter.Title}}<h3 class="chapter-title">{{.Chapter.Title}}</h3>{{end}}
-    {{if .Tokens}}
+    {{if .Paragraphs}}
     <div class="tokenized-text">
-    {{- range .Tokens -}}
-    {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
-    {{- else -}}<span class="punct">{{.Token}}</span>
-    {{- end -}}
-    {{- end -}}
+    {{- range .Paragraphs}}
+    <div class="paragraph" id="p-{{.Number}}">
+        {{- if $.LoggedIn}}<button class="bookmark-btn" title="Bookmark this paragraph"
+            onclick="saveParaBookmark({{$.BookID}}, {{$.Chapter.ID}}, {{.Number}}, this)">&#x1F516;</button>{{end -}}
+        {{- range .Tokens -}}
+        {{- if eq .Type "word"}} <span class="word">{{.Token}}</span>
+        {{- else -}}<span class="punct">{{.Token}}</span>
+        {{- end -}}
+        {{- end -}}
     </div>
-    {{else if .PlainText}}
-    <div class="plain-text">{{.PlainText}}</div>
+    {{- end}}
+    </div>
+    {{else if .PlainParagraphs}}
+    <div class="plain-text">
+    {{- range .PlainParagraphs}}
+    <div class="paragraph" id="p-{{.Number}}">
+        {{- if $.LoggedIn}}<button class="bookmark-btn" title="Bookmark this paragraph"
+            onclick="saveParaBookmark({{$.BookID}}, {{$.Chapter.ID}}, {{.Number}}, this)">&#x1F516;</button>{{end -}}
+        {{.Text}}
+    </div>
+    {{- end}}
+    </div>
     {{end}}
 </div>
 {{end}}

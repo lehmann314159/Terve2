@@ -584,6 +584,29 @@ body {
     font-size: 0.85rem;
     color: var(--text-light);
 }
+/* --- Focus Button (Review) --- */
+.fc-btn-focus-review {
+    background: none;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.95rem;
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius);
+    color: var(--border);
+    transition: background 0.2s, color 0.2s;
+    margin-bottom: 1rem;
+}
+.fc-btn-focus-review:hover {
+    color: #f59e0b;
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+.fc-btn-focus-review.focused {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
 .fc-rating-buttons {
     display: flex;
     gap: 0.5rem;
@@ -770,6 +793,42 @@ body {
     color: var(--primary);
     margin-bottom: 1rem;
     font-size: 1.1rem;
+}
+
+/* --- Paragraph & Bookmark --- */
+.paragraph {
+    margin-bottom: 1em;
+    position: relative;
+    padding-left: 2rem;
+}
+.bookmark-btn {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.paragraph:hover .bookmark-btn {
+    opacity: 0.5;
+}
+.bookmark-btn:hover {
+    opacity: 1 !important;
+}
+.bookmark-btn.saved {
+    opacity: 1;
+    color: var(--success);
+}
+.bookmarked {
+    border-left: 3px solid var(--primary);
+    padding-left: calc(2rem - 3px);
+    background: #f0f7ff;
+    border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 /* --- Responsive --- */

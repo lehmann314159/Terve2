@@ -126,6 +126,13 @@
             </p>
             {{end}}
         </div>
+        <button class="fc-btn-focus-review {{if .UserCard.Focused}}focused{{end}}"
+                hx-post="/flashcards/{{.UserCard.ID}}/focus-review"
+                hx-target="#review-area"
+                hx-swap="innerHTML"
+                title="{{if .UserCard.Focused}}Unfocus{{else}}Focus{{end}}">
+            &#9733; {{if .UserCard.Focused}}Focused{{else}}Focus{{end}}
+        </button>
         <div class="fc-rating-buttons">
             <button class="btn fc-rate fc-rate-again"
                     hx-post="/flashcards/review/{{.UserCard.ID}}"

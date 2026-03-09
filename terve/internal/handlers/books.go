@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/lehmann314159/terve2/internal/auth"
@@ -20,16 +21,30 @@ type BooksPageData struct {
 	Bookmarks map[int64]int64 // bookID → chapterID
 }
 
+// Paragraph holds a group of tokens forming one paragraph.
+type Paragraph struct {
+	Number int
+	Tokens []voikko.TokenAnalysis
+}
+
+// PlainParagraph holds one paragraph of plain (non-tokenized) text.
+type PlainParagraph struct {
+	Number int
+	Text   string
+}
+
 // BookReaderData is passed to the book reader page.
 type BookReaderData struct {
 	PageData
-	Book           *db.Book
-	Chapters       []db.BookChapter
-	CurrentChapter *db.BookChapter
-	ChapterNumber  int
-	Tokens         []voikko.TokenAnalysis
-	PlainText      string
-	Bookmark       int64 // bookmarked chapter_id, 0 if none
+	Book              *db.Book
+	Chapters          []db.BookChapter
+	CurrentChapter    *db.BookChapter
+	ChapterNumber     int
+	Paragraphs        []Paragraph
+	PlainParagraphs   []PlainParagraph
+	Bookmark          int64 // bookmarked chapter_id, 0 if none
+	BookmarkParagraph int
+	LoggedIn          bool
 }
 
 // BooksPage renders the full book list page.
@@ -84,8 +99,9 @@ func (h *Handlers) BookReader(w http.ResponseWriter, r *http.Request) {
 	chapterNum := 1
 	sess := auth.GetSession(r.Context())
 	var bookmark int64
+	var bookmarkParagraph int
 	if sess != nil {
-		bookmark = h.db.GetBookmark(sess.DBUserID, bookID)
+		bookmark, bookmarkParagraph = h.db.GetBookmark(sess.DBUserID, bookID)
 		if bookmark != 0 {
 			// Find chapter number from chapter ID
 			for _, ch := range chapters {
@@ -110,18 +126,22 @@ func (h *Handlers) BookReader(w http.ResponseWriter, r *http.Request) {
 		chapterNum = currentChapter.ChapterNumber
 	}
 
-	// Tokenize chapter text
+	// Tokenize chapter text and group into paragraphs
 	tokens, plainText := h.tokenizeText(currentChapter.Content)
+	paragraphs := groupIntoParagraphs(tokens)
+	plainParagraphs := splitPlainTextParagraphs(plainText)
 
 	h.render(w, "base", BookReaderData{
-		PageData:       pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
-		Book:           book,
-		Chapters:       chapters,
-		CurrentChapter: currentChapter,
-		ChapterNumber:  chapterNum,
-		Tokens:         tokens,
-		PlainText:      plainText,
-		Bookmark:       bookmark,
+		PageData:          pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
+		Book:              book,
+		Chapters:          chapters,
+		CurrentChapter:    currentChapter,
+		ChapterNumber:     chapterNum,
+		Paragraphs:        paragraphs,
+		PlainParagraphs:   plainParagraphs,
+		Bookmark:          bookmark,
+		BookmarkParagraph: bookmarkParagraph,
+		LoggedIn:          sess != nil,
 	})
 }
 
@@ -145,10 +165,10 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Auto-save bookmark if logged in
+	// Auto-save bookmark if logged in (chapter-level, paragraph=0)
 	sess := auth.GetSession(r.Context())
 	if sess != nil {
-		if err := h.db.SaveBookmark(sess.DBUserID, bookID, chapter.ID); err != nil {
+		if err := h.db.SaveBookmark(sess.DBUserID, bookID, chapter.ID, 0); err != nil {
 			log.Printf("save bookmark: %v", err)
 		}
 	}
@@ -160,6 +180,8 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokens, plainText := h.tokenizeText(chapter.Content)
+	paragraphs := groupIntoParagraphs(tokens)
+	plainParagraphs := splitPlainTextParagraphs(plainText)
 
 	// Direct browser request: render full reader page
 	if r.Header.Get("HX-Request") == "" {
@@ -170,30 +192,34 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var bookmark int64
+		var bookmarkParagraph int
 		if sess != nil {
-			bookmark = h.db.GetBookmark(sess.DBUserID, bookID)
+			bookmark, bookmarkParagraph = h.db.GetBookmark(sess.DBUserID, bookID)
 		}
 		h.render(w, "base", BookReaderData{
-			PageData:       pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
-			Book:           book,
-			Chapters:       chapters,
-			CurrentChapter: chapter,
-			ChapterNumber:  chapterNum,
-			Tokens:         tokens,
-			PlainText:      plainText,
-			Bookmark:       bookmark,
+			PageData:          pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
+			Book:              book,
+			Chapters:          chapters,
+			CurrentChapter:    chapter,
+			ChapterNumber:     chapterNum,
+			Paragraphs:        paragraphs,
+			PlainParagraphs:   plainParagraphs,
+			Bookmark:          bookmark,
+			BookmarkParagraph: bookmarkParagraph,
+			LoggedIn:          sess != nil,
 		})
 		return
 	}
 
 	// HTMX request: render partial
 	h.renderPartial(w, "book-chapter", map[string]any{
-		"Chapter":       chapter,
-		"ChapterNumber": chapterNum,
-		"TotalChapters": book.ChapterCount,
-		"BookID":        bookID,
-		"Tokens":        tokens,
-		"PlainText":     plainText,
+		"Chapter":         chapter,
+		"ChapterNumber":   chapterNum,
+		"TotalChapters":   book.ChapterCount,
+		"BookID":          bookID,
+		"Paragraphs":      paragraphs,
+		"PlainParagraphs": plainParagraphs,
+		"LoggedIn":        sess != nil,
 	})
 }
 
@@ -217,7 +243,9 @@ func (h *Handlers) SaveBookmark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.db.SaveBookmark(sess.DBUserID, bookID, chapterID); err != nil {
+	paragraph, _ := strconv.Atoi(r.FormValue("paragraph"))
+
+	if err := h.db.SaveBookmark(sess.DBUserID, bookID, chapterID, paragraph); err != nil {
 		log.Printf("save bookmark: %v", err)
 		http.Error(w, "Failed to save bookmark", http.StatusInternalServerError)
 		return
@@ -310,4 +338,56 @@ func (h *Handlers) tokenizeText(text string) ([]voikko.TokenAnalysis, string) {
 		return nil, text
 	}
 	return sv.Tokens, text
+}
+
+// groupIntoParagraphs splits a flat token slice into paragraphs.
+// A paragraph break is detected when a punct token contains "\n\n".
+func groupIntoParagraphs(tokens []voikko.TokenAnalysis) []Paragraph {
+	if len(tokens) == 0 {
+		return nil
+	}
+
+	var paragraphs []Paragraph
+	var current []voikko.TokenAnalysis
+	num := 1
+
+	for _, tok := range tokens {
+		if tok.Type != "word" && strings.Contains(tok.Token, "\n\n") {
+			// Flush current paragraph if it has content
+			if len(current) > 0 {
+				paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: current})
+				num++
+				current = nil
+			}
+			continue
+		}
+		current = append(current, tok)
+	}
+
+	// Flush remaining tokens
+	if len(current) > 0 {
+		paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: current})
+	}
+
+	return paragraphs
+}
+
+// splitPlainTextParagraphs splits plain text on double newlines into numbered paragraphs.
+func splitPlainTextParagraphs(text string) []PlainParagraph {
+	if text == "" {
+		return nil
+	}
+
+	parts := strings.Split(text, "\n\n")
+	var paragraphs []PlainParagraph
+	num := 1
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		paragraphs = append(paragraphs, PlainParagraph{Number: num, Text: p})
+		num++
+	}
+	return paragraphs
 }

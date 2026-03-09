@@ -249,6 +249,31 @@ func (h *Handlers) ToggleFocus(w http.ResponseWriter, r *http.Request) {
 	h.FlashcardList(w, r)
 }
 
+// ToggleFocusReview toggles focus and re-renders the review card in place.
+func (h *Handlers) ToggleFocusReview(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+	ucID, err := strconv.ParseInt(chi.URLParam(r, "cardID"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid card ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.ToggleFocus(ucID, sess.DBUserID); err != nil {
+		log.Printf("toggle focus (review): %v", err)
+		http.Error(w, "Failed to toggle focus", http.StatusInternalServerError)
+		return
+	}
+
+	uc, err := h.db.GetUserCard(ucID, sess.DBUserID)
+	if err != nil {
+		log.Printf("get user card after focus toggle: %v", err)
+		http.Error(w, "Card not found", http.StatusNotFound)
+		return
+	}
+
+	h.renderPartial(w, "review-card", ReviewCardData{UserCard: uc})
+}
+
 // ReviewCardData is passed to the review card template.
 type ReviewCardData struct {
 	UserCard *db.UserCard

@@ -136,6 +136,7 @@ func (db *DB) migrate() error {
 			user_id    INTEGER NOT NULL REFERENCES users(id),
 			book_id    INTEGER NOT NULL REFERENCES books(id),
 			chapter_id INTEGER NOT NULL REFERENCES book_chapters(id),
+			paragraph  INTEGER NOT NULL DEFAULT 0,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE(user_id, book_id)
 		)
@@ -143,6 +144,9 @@ func (db *DB) migrate() error {
 	if err != nil {
 		return err
 	}
+
+	// Migration for existing DBs: add paragraph column if missing.
+	db.Exec(`ALTER TABLE user_bookmarks ADD COLUMN paragraph INTEGER NOT NULL DEFAULT 0`)
 
 	if err := db.seedCards(); err != nil {
 		return err
