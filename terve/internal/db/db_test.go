@@ -154,6 +154,29 @@ func TestListBooks(t *testing.T) {
 	}
 }
 
+func TestSeedChapterContentSizes(t *testing.T) {
+	db := testDB(t)
+
+	books, err := db.ListBooks()
+	if err != nil {
+		t.Fatalf("ListBooks: %v", err)
+	}
+
+	for _, b := range books {
+		chapters, err := db.GetChapters(b.ID)
+		if err != nil {
+			t.Errorf("GetChapters(%d): %v", b.ID, err)
+			continue
+		}
+		for _, ch := range chapters {
+			t.Logf("%-30s Ch %2d: %6d bytes  title=%q", b.Title, ch.ChapterNumber, len(ch.Content), ch.Title)
+			if len(ch.Content) < 200 {
+				t.Errorf("book %q ch %d content too short: %d bytes (min 200)", b.Title, ch.ChapterNumber, len(ch.Content))
+			}
+		}
+	}
+}
+
 func TestInsertChapter_AndGetChapter(t *testing.T) {
 	db := testDB(t)
 

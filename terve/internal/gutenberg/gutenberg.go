@@ -118,26 +118,75 @@ func buildOrdinalPattern() string {
 func SplitChapters(text string) []Chapter {
 	// Try Finnish ordinal chapters first
 	if chapters := splitByRegex(text, reFinnishChapter); len(chapters) > 1 {
-		return chapters
+		return mergeShortChapters(chapters, 200)
 	}
 
 	// Try roman numeral sections
 	if chapters := splitByRoman(text); len(chapters) > 1 {
-		return chapters
+		return mergeShortChapters(chapters, 200)
 	}
 
 	// Try numbered chapters
 	if chapters := splitByRegex(text, reNumbered); len(chapters) > 1 {
-		return chapters
+		return mergeShortChapters(chapters, 200)
 	}
 
 	// Try ALL-CAPS section headers (but be conservative — need at least 3 sections)
 	if chapters := splitByAllCaps(text); len(chapters) >= 3 {
-		return chapters
+		return mergeShortChapters(chapters, 200)
 	}
 
 	// Fallback: single chapter
 	return []Chapter{{Number: 1, Title: "", Body: text}}
+}
+
+// mergeShortChapters collapses chapters whose body is shorter than minBody
+// bytes into their neighbours. Short chapters at the start or middle are
+// merged forward (prepended to the next chapter); a short final chapter is
+// merged backward. After merging, chapters are renumbered sequentially.
+func mergeShortChapters(chapters []Chapter, minBody int) []Chapter {
+	if len(chapters) == 0 {
+		return chapters
+	}
+
+	merged := make([]Chapter, 0, len(chapters))
+	var carry string // accumulated tiny-chapter text to prepend to the next real chapter
+
+	for i, ch := range chapters {
+		if len(ch.Body) < minBody {
+			// Accumulate this chapter's body into carry
+			if carry != "" {
+				carry += "\n\n" + ch.Body
+			} else {
+				carry = ch.Body
+			}
+			// If this is the last chapter and we have a carry, append to previous
+			if i == len(chapters)-1 && len(merged) > 0 {
+				merged[len(merged)-1].Body += "\n\n" + carry
+				carry = ""
+			}
+			continue
+		}
+
+		// Real chapter — prepend any accumulated carry
+		if carry != "" {
+			ch.Body = carry + "\n\n" + ch.Body
+			carry = ""
+		}
+		merged = append(merged, ch)
+	}
+
+	// If everything was tiny (carry still set, merged empty), return as single chapter
+	if len(merged) == 0 && carry != "" {
+		return []Chapter{{Number: 1, Title: "", Body: carry}}
+	}
+
+	// Renumber sequentially
+	for i := range merged {
+		merged[i].Number = i + 1
+	}
+
+	return merged
 }
 
 func splitByRegex(text string, re *regexp.Regexp) []Chapter {
