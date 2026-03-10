@@ -747,3 +747,69 @@ func TestGetRandomUserCards_Distractors(t *testing.T) {
 		}
 	}
 }
+
+// --- Paradigm cache tests ---
+
+func TestSaveParadigm_AndGetParadigm(t *testing.T) {
+	db := testDB(t)
+
+	forms := map[string]string{
+		"nominative_singular": "talo",
+		"genitive_singular":   "talon",
+		"partitive_singular":  "taloa",
+		"inessive_singular":   "talossa",
+	}
+
+	err := db.SaveParadigm("talo", "noun", "", forms)
+	if err != nil {
+		t.Fatalf("SaveParadigm: %v", err)
+	}
+
+	got, err := db.GetParadigm("talo", "noun", "")
+	if err != nil {
+		t.Fatalf("GetParadigm: %v", err)
+	}
+
+	if got["nominative_singular"] != "talo" {
+		t.Errorf("nominative_singular = %q, want %q", got["nominative_singular"], "talo")
+	}
+	if got["inessive_singular"] != "talossa" {
+		t.Errorf("inessive_singular = %q, want %q", got["inessive_singular"], "talossa")
+	}
+	if len(got) != 4 {
+		t.Errorf("expected 4 forms, got %d", len(got))
+	}
+}
+
+func TestGetParadigm_CacheMiss(t *testing.T) {
+	db := testDB(t)
+
+	_, err := db.GetParadigm("nonexistent", "noun", "")
+	if err == nil {
+		t.Fatal("expected error for cache miss")
+	}
+	if err != sql.ErrNoRows {
+		t.Errorf("expected sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestSaveParadigm_Upsert(t *testing.T) {
+	db := testDB(t)
+
+	original := map[string]string{"nominative_singular": "talo"}
+	updated := map[string]string{"nominative_singular": "talo", "genitive_singular": "talon"}
+
+	db.SaveParadigm("talo", "noun", "", original)
+	db.SaveParadigm("talo", "noun", "", updated)
+
+	got, err := db.GetParadigm("talo", "noun", "")
+	if err != nil {
+		t.Fatalf("GetParadigm after upsert: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("expected 2 forms after upsert, got %d", len(got))
+	}
+	if got["genitive_singular"] != "talon" {
+		t.Errorf("genitive_singular = %q, want %q", got["genitive_singular"], "talon")
+	}
+}

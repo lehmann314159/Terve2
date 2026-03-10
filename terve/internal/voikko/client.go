@@ -76,6 +76,19 @@ func (c *Client) GetSuggestions(word string) (*Suggestions, error) {
 	return &result, nil
 }
 
+// ValidateWord checks if a word is a valid Finnish word via Voikko's spell-checker.
+func (c *Client) ValidateWord(word string) (bool, error) {
+	body, err := c.post("/validate", map[string]string{"word": word})
+	if err != nil {
+		return false, err
+	}
+	var result WordValidation
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false, fmt.Errorf("voikko: decode validate response: %w", err)
+	}
+	return result.Valid, nil
+}
+
 // post sends a POST request with a JSON body and returns the response body.
 func (c *Client) post(path string, payload any) ([]byte, error) {
 	data, err := json.Marshal(payload)

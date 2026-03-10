@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/db"
+	"github.com/lehmann314159/terve2/internal/ollama"
 )
 
 // --- Data types ---
@@ -65,6 +67,22 @@ type QuizAnswerData struct {
 	QuizSlug      string
 	Level         string
 	UsedIDs       string
+}
+
+type DeclensionQuestionData struct {
+	Lemma, WordClass, TargetForm string
+	Options                      []QuizOption
+	CorrectValue                 string
+	QuestionNum, Total, Score    int
+	UsedIDs                      string
+}
+
+type ConjugationQuestionData struct {
+	Lemma, TargetForm         string
+	Options                   []QuizOption
+	CorrectValue              string
+	QuestionNum, Total, Score int
+	UsedIDs                   string
 }
 
 type QuizResultsData struct {
@@ -476,4 +494,433 @@ func generateCaseDistractors(correctCase, correctNumber string, n int, allowedCa
 		}
 	}
 	return result
+}
+
+// --- Declension quiz ---
+
+// nounCaseKeys lists all 28 paradigm keys for noun declension.
+var nounCaseKeys = func() []string {
+	var keys []string
+	for _, c := range finnishCases {
+		for _, n := range finnishNumbers {
+			keys = append(keys, c+"_"+n)
+		}
+	}
+	return keys
+}()
+
+// formatCaseKey converts "inessive_singular" to "inessive singular" for display.
+func formatCaseKey(key string) string {
+	return strings.ReplaceAll(key, "_", " ")
+}
+
+// getOrGenerateNounParadigm returns cached paradigm or generates one via Ollama,
+// verifying forms with Voikko spell-check.
+func (h *Handlers) getOrGenerateNounParadigm(lemma, wordClass string) (map[string]string, error) {
+	forms, err := h.db.GetParadigm(lemma, wordClass, "")
+	if err == nil {
+		return forms, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// Generate via Ollama
+	forms, err = ollama.GenerateNounParadigm(h.ollama, lemma)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify each form with Voikko spell-checker, drop invalid ones
+	verified := make(map[string]string)
+	for key, form := range forms {
+		valid, verr := h.voikko.ValidateWord(form)
+		if verr != nil {
+			log.Printf("voikko validate %q: %v", form, verr)
+			// Keep the form if we can't reach Voikko (graceful degradation)
+			verified[key] = form
+			continue
+		}
+		if valid {
+			verified[key] = form
+		} else {
+			log.Printf("paradigm: dropping invalid form %s=%q for lemma %q", key, form, lemma)
+		}
+	}
+
+	if len(verified) > 0 {
+		if err := h.db.SaveParadigm(lemma, wordClass, "", verified); err != nil {
+			log.Printf("save paradigm cache: %v", err)
+		}
+	}
+
+	return verified, nil
+}
+
+// DeclensionPage renders the declension quiz session page.
+func (h *Handlers) DeclensionPage(w http.ResponseWriter, r *http.Request) {
+	h.render(w, "base", QuizSessionData{
+		PageData:  pageData(r, "Terve — Declension", "quiz-session"),
+		QuizType:  "declension",
+		QuizSlug:  "declension",
+		QuizTitle: "Declension",
+	})
+}
+
+// DeclensionQuestion generates a single declension question (HTMX partial).
+func (h *Handlers) DeclensionQuestion(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
+	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
+	used := r.URL.Query().Get("used")
+	if qNum < 1 {
+		qNum = 1
+	}
+
+	excludeIDs := parseUsedIDs(used)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
+		if err != nil {
+			log.Printf("declension quiz: get card: %v", err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "You need flashcards in your deck to take quizzes. Add some cards first!",
+			})
+			return
+		}
+
+		// Analyze to get lemma and word class
+		analyses, err := h.voikko.AnalyzeWord(card.Finnish)
+		if err != nil || len(analyses) == 0 {
+			continue
+		}
+		a := analyses[0]
+
+		// Only nouns and adjectives have case declension
+		wc := strings.ToLower(a.WordClassEnglish)
+		if wc != "noun" && wc != "adjective" {
+			continue
+		}
+
+		lemma := a.Lemma
+		if lemma == "" {
+			lemma = card.Lemma
+		}
+
+		paradigm, err := h.getOrGenerateNounParadigm(lemma, wc)
+		if err != nil {
+			log.Printf("declension quiz: get paradigm for %q: %v", lemma, err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "Could not generate word forms. Make sure Ollama is running.",
+			})
+			return
+		}
+
+		// Need at least 4 forms for a good quiz
+		if len(paradigm) < 4 {
+			continue
+		}
+
+		// Collect available keys
+		var availableKeys []string
+		for _, key := range nounCaseKeys {
+			if _, ok := paradigm[key]; ok {
+				availableKeys = append(availableKeys, key)
+			}
+		}
+		if len(availableKeys) < 4 {
+			continue
+		}
+
+		// Pick a random target
+		rand.Shuffle(len(availableKeys), func(i, j int) {
+			availableKeys[i], availableKeys[j] = availableKeys[j], availableKeys[i]
+		})
+		targetKey := availableKeys[0]
+		correctForm := paradigm[targetKey]
+
+		// Build distractors: 3 other forms from the same paradigm
+		var distractorForms []string
+		seen := map[string]bool{strings.ToLower(correctForm): true}
+		for _, key := range availableKeys[1:] {
+			form := paradigm[key]
+			lower := strings.ToLower(form)
+			if !seen[lower] {
+				distractorForms = append(distractorForms, form)
+				seen[lower] = true
+			}
+			if len(distractorForms) >= 3 {
+				break
+			}
+		}
+
+		options := []QuizOption{{Value: correctForm, Display: correctForm}}
+		for _, d := range distractorForms {
+			options = append(options, QuizOption{Value: d, Display: d})
+		}
+		rand.Shuffle(len(options), func(i, j int) {
+			options[i], options[j] = options[j], options[i]
+		})
+
+		h.renderPartial(w, "declension-question", DeclensionQuestionData{
+			Lemma:        lemma,
+			WordClass:    wc,
+			TargetForm:   formatCaseKey(targetKey),
+			Options:      options,
+			CorrectValue: correctForm,
+			QuestionNum:  qNum,
+			Total:        10,
+			Score:        score,
+			UsedIDs:      appendUsedID(used, card.ID),
+		})
+		return
+	}
+
+	h.renderPartial(w, "quiz-error", map[string]string{
+		"Error": "Could not find a suitable word. Try adding more nouns or adjectives to your deck.",
+	})
+}
+
+// DeclensionAnswer checks a declension answer (HTMX partial).
+func (h *Handlers) DeclensionAnswer(w http.ResponseWriter, r *http.Request) {
+	selected := r.FormValue("selected")
+	correct := r.FormValue("correct")
+	word := r.FormValue("word")
+	target := r.FormValue("target")
+	qNum, _ := strconv.Atoi(r.FormValue("q"))
+	score, _ := strconv.Atoi(r.FormValue("s"))
+	used := r.FormValue("used")
+
+	isCorrect := strings.EqualFold(selected, correct)
+	if isCorrect {
+		score++
+	}
+
+	explanation := fmt.Sprintf("'%s' is the %s of '%s'", correct, target, word)
+
+	h.renderPartial(w, "quiz-answer", QuizAnswerData{
+		Correct:       isCorrect,
+		SelectedValue: selected,
+		CorrectValue:  correct,
+		Word:          word,
+		Explanation:   explanation,
+		QuestionNum:   qNum,
+		Total:         10,
+		Score:         score,
+		QuizSlug:      "declension",
+		UsedIDs:       used,
+	})
+}
+
+// --- Conjugation quiz ---
+
+// verbFormKeys lists all paradigm keys for verb conjugation.
+var verbFormKeys = []string{
+	"1st_singular_present", "2nd_singular_present", "3rd_singular_present",
+	"1st_plural_present", "2nd_plural_present", "3rd_plural_present",
+	"passive_present",
+	"1st_singular_past", "2nd_singular_past", "3rd_singular_past",
+	"1st_plural_past", "2nd_plural_past", "3rd_plural_past",
+	"passive_past",
+}
+
+// formatVerbKey converts "3rd_singular_present" to "3rd person singular present" for display.
+func formatVerbKey(key string) string {
+	parts := strings.Split(key, "_")
+	if len(parts) == 2 {
+		// passive_present -> "passive present"
+		return parts[0] + " " + parts[1]
+	}
+	if len(parts) == 3 {
+		// 1st_singular_present -> "1st person singular present"
+		return parts[0] + " person " + parts[1] + " " + parts[2]
+	}
+	return strings.ReplaceAll(key, "_", " ")
+}
+
+// getOrGenerateVerbParadigm returns cached paradigm or generates one via Ollama.
+func (h *Handlers) getOrGenerateVerbParadigm(lemma string) (map[string]string, error) {
+	forms, err := h.db.GetParadigm(lemma, "verb", "")
+	if err == nil {
+		return forms, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	forms, err = ollama.GenerateVerbParadigm(h.ollama, lemma)
+	if err != nil {
+		return nil, err
+	}
+
+	verified := make(map[string]string)
+	for key, form := range forms {
+		valid, verr := h.voikko.ValidateWord(form)
+		if verr != nil {
+			log.Printf("voikko validate %q: %v", form, verr)
+			verified[key] = form
+			continue
+		}
+		if valid {
+			verified[key] = form
+		} else {
+			log.Printf("paradigm: dropping invalid form %s=%q for lemma %q", key, form, lemma)
+		}
+	}
+
+	if len(verified) > 0 {
+		if err := h.db.SaveParadigm(lemma, "verb", "", verified); err != nil {
+			log.Printf("save verb paradigm cache: %v", err)
+		}
+	}
+
+	return verified, nil
+}
+
+// ConjugationPage renders the conjugation quiz session page.
+func (h *Handlers) ConjugationPage(w http.ResponseWriter, r *http.Request) {
+	h.render(w, "base", QuizSessionData{
+		PageData:  pageData(r, "Terve — Conjugation", "quiz-session"),
+		QuizType:  "conjugation",
+		QuizSlug:  "conjugation",
+		QuizTitle: "Conjugation",
+	})
+}
+
+// ConjugationQuestion generates a single conjugation question (HTMX partial).
+func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
+	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
+	used := r.URL.Query().Get("used")
+	if qNum < 1 {
+		qNum = 1
+	}
+
+	excludeIDs := parseUsedIDs(used)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
+		if err != nil {
+			log.Printf("conjugation quiz: get card: %v", err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "You need flashcards in your deck to take quizzes. Add some cards first!",
+			})
+			return
+		}
+
+		analyses, err := h.voikko.AnalyzeWord(card.Finnish)
+		if err != nil || len(analyses) == 0 {
+			continue
+		}
+		a := analyses[0]
+
+		wc := strings.ToLower(a.WordClassEnglish)
+		if wc != "verb" {
+			continue
+		}
+
+		lemma := a.Lemma
+		if lemma == "" {
+			lemma = card.Lemma
+		}
+
+		paradigm, err := h.getOrGenerateVerbParadigm(lemma)
+		if err != nil {
+			log.Printf("conjugation quiz: get paradigm for %q: %v", lemma, err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "Could not generate verb forms. Make sure Ollama is running.",
+			})
+			return
+		}
+
+		if len(paradigm) < 4 {
+			continue
+		}
+
+		var availableKeys []string
+		for _, key := range verbFormKeys {
+			if _, ok := paradigm[key]; ok {
+				availableKeys = append(availableKeys, key)
+			}
+		}
+		if len(availableKeys) < 4 {
+			continue
+		}
+
+		rand.Shuffle(len(availableKeys), func(i, j int) {
+			availableKeys[i], availableKeys[j] = availableKeys[j], availableKeys[i]
+		})
+		targetKey := availableKeys[0]
+		correctForm := paradigm[targetKey]
+
+		var distractorForms []string
+		seen := map[string]bool{strings.ToLower(correctForm): true}
+		for _, key := range availableKeys[1:] {
+			form := paradigm[key]
+			lower := strings.ToLower(form)
+			if !seen[lower] {
+				distractorForms = append(distractorForms, form)
+				seen[lower] = true
+			}
+			if len(distractorForms) >= 3 {
+				break
+			}
+		}
+
+		options := []QuizOption{{Value: correctForm, Display: correctForm}}
+		for _, d := range distractorForms {
+			options = append(options, QuizOption{Value: d, Display: d})
+		}
+		rand.Shuffle(len(options), func(i, j int) {
+			options[i], options[j] = options[j], options[i]
+		})
+
+		h.renderPartial(w, "conjugation-question", ConjugationQuestionData{
+			Lemma:        lemma,
+			TargetForm:   formatVerbKey(targetKey),
+			Options:      options,
+			CorrectValue: correctForm,
+			QuestionNum:  qNum,
+			Total:        10,
+			Score:        score,
+			UsedIDs:      appendUsedID(used, card.ID),
+		})
+		return
+	}
+
+	h.renderPartial(w, "quiz-error", map[string]string{
+		"Error": "Could not find a suitable verb. Try adding more verbs to your deck.",
+	})
+}
+
+// ConjugationAnswer checks a conjugation answer (HTMX partial).
+func (h *Handlers) ConjugationAnswer(w http.ResponseWriter, r *http.Request) {
+	selected := r.FormValue("selected")
+	correct := r.FormValue("correct")
+	word := r.FormValue("word")
+	target := r.FormValue("target")
+	qNum, _ := strconv.Atoi(r.FormValue("q"))
+	score, _ := strconv.Atoi(r.FormValue("s"))
+	used := r.FormValue("used")
+
+	isCorrect := strings.EqualFold(selected, correct)
+	if isCorrect {
+		score++
+	}
+
+	explanation := fmt.Sprintf("'%s' is the %s form of '%s'", correct, target, word)
+
+	h.renderPartial(w, "quiz-answer", QuizAnswerData{
+		Correct:       isCorrect,
+		SelectedValue: selected,
+		CorrectValue:  correct,
+		Word:          word,
+		Explanation:   explanation,
+		QuestionNum:   qNum,
+		Total:         10,
+		Score:         score,
+		QuizSlug:      "conjugation",
+		UsedIDs:       used,
+	})
 }

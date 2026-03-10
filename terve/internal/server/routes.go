@@ -53,6 +53,12 @@ func (s *Server) setupRoutes() {
 		r.Get("/form-english", s.handlers.FormEnglishPage)
 		r.Get("/form-english/question", s.handlers.FormEnglishQuestion)
 		r.Post("/form-english/answer", s.handlers.FormEnglishAnswer)
+		r.Get("/declension", s.handlers.DeclensionPage)
+		r.Get("/declension/question", s.handlers.DeclensionQuestion)
+		r.Post("/declension/answer", s.handlers.DeclensionAnswer)
+		r.Get("/conjugation", s.handlers.ConjugationPage)
+		r.Get("/conjugation/question", s.handlers.ConjugationQuestion)
+		r.Post("/conjugation/answer", s.handlers.ConjugationAnswer)
 		r.Post("/results", s.handlers.QuizResults)
 	})
 
