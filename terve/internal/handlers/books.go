@@ -126,10 +126,8 @@ func (h *Handlers) BookReader(w http.ResponseWriter, r *http.Request) {
 		chapterNum = currentChapter.ChapterNumber
 	}
 
-	// Tokenize chapter text and group into paragraphs
-	tokens, plainText := h.tokenizeText(currentChapter.Content)
-	paragraphs := groupIntoParagraphs(tokens)
-	plainParagraphs := splitPlainTextParagraphs(plainText)
+	// Split into paragraphs and tokenize each
+	paragraphs, plainParagraphs := h.tokenizeParagraphs(currentChapter.Content)
 
 	h.render(w, "base", BookReaderData{
 		PageData:          pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
@@ -179,9 +177,7 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, plainText := h.tokenizeText(chapter.Content)
-	paragraphs := groupIntoParagraphs(tokens)
-	plainParagraphs := splitPlainTextParagraphs(plainText)
+	paragraphs, plainParagraphs := h.tokenizeParagraphs(chapter.Content)
 
 	// Direct browser request: render full reader page
 	if r.Header.Get("HX-Request") == "" {
@@ -340,54 +336,28 @@ func (h *Handlers) tokenizeText(text string) ([]voikko.TokenAnalysis, string) {
 	return sv.Tokens, text
 }
 
-// groupIntoParagraphs splits a flat token slice into paragraphs.
-// A paragraph break is detected when a punct token contains "\n\n".
-func groupIntoParagraphs(tokens []voikko.TokenAnalysis) []Paragraph {
-	if len(tokens) == 0 {
-		return nil
-	}
-
-	var paragraphs []Paragraph
-	var current []voikko.TokenAnalysis
-	num := 1
-
-	for _, tok := range tokens {
-		if tok.Type != "word" && strings.Contains(tok.Token, "\n\n") {
-			// Flush current paragraph if it has content
-			if len(current) > 0 {
-				paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: current})
-				num++
-				current = nil
-			}
-			continue
-		}
-		current = append(current, tok)
-	}
-
-	// Flush remaining tokens
-	if len(current) > 0 {
-		paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: current})
-	}
-
-	return paragraphs
-}
-
-// splitPlainTextParagraphs splits plain text on double newlines into numbered paragraphs.
-func splitPlainTextParagraphs(text string) []PlainParagraph {
-	if text == "" {
-		return nil
-	}
-
+// tokenizeParagraphs splits text on double newlines first, then tokenizes
+// each paragraph individually via Voikko. This avoids relying on Voikko's
+// tokenizer to preserve paragraph boundaries.
+func (h *Handlers) tokenizeParagraphs(text string) ([]Paragraph, []PlainParagraph) {
 	parts := strings.Split(text, "\n\n")
-	var paragraphs []PlainParagraph
+	var paragraphs []Paragraph
+	var plainParagraphs []PlainParagraph
 	num := 1
+
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
-		paragraphs = append(paragraphs, PlainParagraph{Number: num, Text: p})
+		plainParagraphs = append(plainParagraphs, PlainParagraph{Number: num, Text: p})
+
+		tokens, _ := h.tokenizeText(p)
+		if len(tokens) > 0 {
+			paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: tokens})
+		}
 		num++
 	}
-	return paragraphs
+
+	return paragraphs, plainParagraphs
 }
