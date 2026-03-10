@@ -114,6 +114,10 @@ type QuizResultsData struct {
 	Recent   []db.QuizResult
 }
 
+// quizMaxAttempts is the maximum number of cards to try before giving up on
+// generating a quiz question.
+const quizMaxAttempts = 10
+
 // --- Finnish cases for distractor generation ---
 
 var finnishCases = []string{
@@ -224,7 +228,7 @@ func (h *Handlers) CaseIDQuestion(w http.ResponseWriter, r *http.Request) {
 	excludeIDs := parseUsedIDs(used)
 
 	// Try up to 10 cards to find one with a case in the allowed tier
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
 		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
 		if err != nil {
 			log.Printf("quiz: get weighted random card: %v", err)
@@ -599,7 +603,7 @@ func (h *Handlers) DeclensionQuestion(w http.ResponseWriter, r *http.Request) {
 
 	excludeIDs := parseUsedIDs(used)
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
 		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
 		if err != nil {
 			log.Printf("declension quiz: get card: %v", err)
@@ -819,7 +823,7 @@ func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
 
 	excludeIDs := parseUsedIDs(used)
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
 		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
 		if err != nil {
 			log.Printf("conjugation quiz: get card: %v", err)
@@ -1016,7 +1020,7 @@ func (h *Handlers) ClozeQuestion(w http.ResponseWriter, r *http.Request) {
 
 	excludeIDs := parseUsedIDs(used)
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
 		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
 		if err != nil {
 			log.Printf("cloze quiz: get card: %v", err)
@@ -1156,7 +1160,7 @@ func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Re
 
 	excludeIDs := parseUsedIDs(used)
 
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
 		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
 		if err != nil {
 			log.Printf("sentence translation quiz: get card: %v", err)

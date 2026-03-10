@@ -37,6 +37,8 @@ func (h *Handlers) FlashcardsPage(w http.ResponseWriter, r *http.Request) {
 	cards, err := h.db.ListUserCards(sess.DBUserID, filter)
 	if err != nil {
 		log.Printf("list user cards: %v", err)
+		http.Error(w, "Failed to load flashcards", http.StatusInternalServerError)
+		return
 	}
 
 	total, due, _ := h.db.CountUserCards(sess.DBUserID)
@@ -62,6 +64,8 @@ func (h *Handlers) FlashcardList(w http.ResponseWriter, r *http.Request) {
 	cards, err := h.db.ListUserCards(sess.DBUserID, filter)
 	if err != nil {
 		log.Printf("list user cards: %v", err)
+		http.Error(w, "Failed to load flashcards", http.StatusInternalServerError)
+		return
 	}
 
 	total, due, _ := h.db.CountUserCards(sess.DBUserID)
@@ -75,6 +79,25 @@ func (h *Handlers) FlashcardList(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// maxFieldLen is the maximum allowed length for flashcard text fields.
+const maxFieldLen = 1000
+
+// validateCardFields checks that required fields are present and within length limits.
+func validateCardFields(finnish string, fields ...string) string {
+	if finnish == "" {
+		return "Finnish word is required."
+	}
+	if len(finnish) > maxFieldLen {
+		return "Finnish word is too long."
+	}
+	for _, f := range fields {
+		if len(f) > maxFieldLen {
+			return "One or more fields exceed the maximum length."
+		}
+	}
+	return ""
+}
+
 // SaveFlashcard saves a card from the analysis panel.
 func (h *Handlers) SaveFlashcard(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
@@ -83,6 +106,12 @@ func (h *Handlers) SaveFlashcard(w http.ResponseWriter, r *http.Request) {
 	lemma := r.FormValue("lemma")
 	if lemma == "" {
 		lemma = finnish
+	}
+
+	if msg := validateCardFields(finnish, lemma, r.FormValue("word_class"), r.FormValue("morphology"),
+		r.FormValue("translation"), r.FormValue("explanation"), r.FormValue("context")); msg != "" {
+		h.renderPartial(w, "save-result", map[string]string{"Error": msg})
+		return
 	}
 
 	card := &db.Card{
@@ -187,8 +216,15 @@ func (h *Handlers) ValidateFlashcard(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) AddFlashcard(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
 
+	finnish := r.FormValue("finnish")
+	if msg := validateCardFields(finnish, r.FormValue("lemma"), r.FormValue("word_class"),
+		r.FormValue("morphology"), r.FormValue("translation")); msg != "" {
+		h.renderPartial(w, "save-result", map[string]string{"Error": msg})
+		return
+	}
+
 	card := &db.Card{
-		Finnish:     r.FormValue("finnish"),
+		Finnish:     finnish,
 		Lemma:       r.FormValue("lemma"),
 		WordClass:   r.FormValue("word_class"),
 		Morphology:  r.FormValue("morphology"),

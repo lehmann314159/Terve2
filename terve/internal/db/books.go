@@ -100,7 +100,7 @@ func (db *DB) ListBooks() ([]Book, error) {
 	}
 	defer rows.Close()
 
-	var books []Book
+	books := []Book{}
 	for rows.Next() {
 		var b Book
 		var gid sql.NullInt64
@@ -159,7 +159,7 @@ func (db *DB) GetChapters(bookID int64) ([]BookChapter, error) {
 	}
 	defer rows.Close()
 
-	var chapters []BookChapter
+	chapters := []BookChapter{}
 	for rows.Next() {
 		var ch BookChapter
 		if err := rows.Scan(&ch.ID, &ch.BookID, &ch.ChapterNumber, &ch.Title, &ch.Content); err != nil {

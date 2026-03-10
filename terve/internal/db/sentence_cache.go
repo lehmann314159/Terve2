@@ -13,7 +13,7 @@ type CachedSentence struct {
 }
 
 // GetSentencesByLemma returns cached sentences for a lemma.
-// Returns an empty slice (not error) if none exist.
+// Returns an empty slice (not nil, not error) if none exist.
 func (db *DB) GetSentencesByLemma(lemma string) ([]CachedSentence, error) {
 	rows, err := db.Query(`
 		SELECT id, lemma, finnish, english, target_form, created_at
@@ -25,7 +25,7 @@ func (db *DB) GetSentencesByLemma(lemma string) ([]CachedSentence, error) {
 	}
 	defer rows.Close()
 
-	var sentences []CachedSentence
+	sentences := []CachedSentence{}
 	for rows.Next() {
 		var s CachedSentence
 		if err := rows.Scan(&s.ID, &s.Lemma, &s.Finnish, &s.English, &s.TargetForm, &s.CreatedAt); err != nil {
@@ -77,7 +77,7 @@ func (db *DB) GetRandomSentencesExcludingLemma(excludeLemma string, limit int) (
 	}
 	defer rows.Close()
 
-	var sentences []CachedSentence
+	sentences := []CachedSentence{}
 	for rows.Next() {
 		var s CachedSentence
 		if err := rows.Scan(&s.ID, &s.Lemma, &s.Finnish, &s.English, &s.TargetForm, &s.CreatedAt); err != nil {

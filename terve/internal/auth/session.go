@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/gob"
+	"log"
 	"net/http"
 	"time"
 
@@ -30,13 +31,16 @@ func init() {
 
 // CookieStore wraps securecookie for session encoding/decoding.
 type CookieStore struct {
-	sc *securecookie.SecureCookie
+	sc     *securecookie.SecureCookie
+	secure bool // set Secure flag on cookies (requires HTTPS)
 }
 
 // NewCookieStore creates a cookie store with the given hash and encryption keys.
-func NewCookieStore(hashKey, encryptKey []byte) *CookieStore {
+// When secure is true, session cookies are only sent over HTTPS.
+func NewCookieStore(hashKey, encryptKey []byte, secure bool) *CookieStore {
 	return &CookieStore{
-		sc: securecookie.New(hashKey, encryptKey),
+		sc:     securecookie.New(hashKey, encryptKey),
+		secure: secure,
 	}
 }
 
@@ -53,7 +57,7 @@ func (cs *CookieStore) Save(w http.ResponseWriter, sess *Session) error {
 		MaxAge:   int(sessionMaxAge.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   false, // set true behind TLS in production
+		Secure:   cs.secure,
 	})
 	return nil
 }
@@ -63,10 +67,11 @@ func (cs *CookieStore) Save(w http.ResponseWriter, sess *Session) error {
 func (cs *CookieStore) Load(r *http.Request) *Session {
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		return nil
+		return nil // no cookie — normal guest visit
 	}
 	var sess Session
 	if err := cs.sc.Decode(sessionCookieName, cookie.Value, &sess); err != nil {
+		log.Printf("session: invalid cookie from %s: %v", r.RemoteAddr, err)
 		return nil
 	}
 	if time.Now().After(sess.ExpiresAt) {

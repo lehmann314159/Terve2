@@ -239,7 +239,7 @@ func (db *DB) LookupLemmaTranslations(lemmas []string) map[string]string {
 }
 
 func scanUserCards(rows *sql.Rows) ([]UserCard, error) {
-	var ucs []UserCard
+	ucs := []UserCard{}
 	for rows.Next() {
 		var uc UserCard
 		var lastReview sql.NullTime

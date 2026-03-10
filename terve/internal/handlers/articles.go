@@ -4,13 +4,17 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/lehmann314159/terve2/internal/rss"
 )
 
-// cachedArticles holds the most recent feed fetch (stateless, no persistence).
-var cachedArticles []rss.Article
+// articleCache protects concurrent access to the cached feed articles.
+var articleCache struct {
+	sync.RWMutex
+	articles []rss.Article
+}
 
 // ListArticles fetches the RSS feed and renders the article list partial.
 func (h *Handlers) ListArticles(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +26,9 @@ func (h *Handlers) ListArticles(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	cachedArticles = articles
+	articleCache.Lock()
+	articleCache.articles = articles
+	articleCache.Unlock()
 	h.renderPartial(w, "article-list", map[string]any{
 		"Articles": articles,
 	})
@@ -32,14 +38,23 @@ func (h *Handlers) ListArticles(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) ShowArticle(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	idx, err := strconv.Atoi(idStr)
-	if err != nil || idx < 0 || idx >= len(cachedArticles) {
+	if err != nil {
 		h.renderPartial(w, "article-text", map[string]any{
 			"Error": "Article not found.",
 		})
 		return
 	}
 
-	article := cachedArticles[idx]
+	articleCache.RLock()
+	if idx < 0 || idx >= len(articleCache.articles) {
+		articleCache.RUnlock()
+		h.renderPartial(w, "article-text", map[string]any{
+			"Error": "Article not found.",
+		})
+		return
+	}
+	article := articleCache.articles[idx]
+	articleCache.RUnlock()
 
 	// Scrape article text
 	text, err := rss.ScrapeArticle(article.Link)

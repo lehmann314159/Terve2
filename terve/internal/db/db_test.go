@@ -830,8 +830,8 @@ func TestGetSentencesByLemma_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSentencesByLemma: %v", err)
 	}
-	if got != nil {
-		t.Errorf("expected nil slice for no results, got %d items", len(got))
+	if len(got) != 0 {
+		t.Errorf("expected empty slice for no results, got %d items", len(got))
 	}
 }
 
@@ -871,8 +871,8 @@ func TestGetRandomSentencesExcludingLemma_NoOthers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRandomSentencesExcludingLemma: %v", err)
 	}
-	if got != nil {
-		t.Errorf("expected nil when only excluded lemma exists, got %d items", len(got))
+	if len(got) != 0 {
+		t.Errorf("expected empty slice when only excluded lemma exists, got %d items", len(got))
 	}
 }
 

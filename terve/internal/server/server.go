@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
@@ -47,7 +48,8 @@ func New(port, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.Au
 	// Session cookie store
 	hashKey := deriveKey(sessionSecret)
 	encKey := deriveKey(sessionEncryptKey)
-	cookieStore := auth.NewCookieStore(hashKey, encKey)
+	secureCookie := os.Getenv("SECURE_COOKIES") == "true"
+	cookieStore := auth.NewCookieStore(hashKey, encKey, secureCookie)
 
 	// State cookie signer (uses same hash key, no encryption needed)
 	stateSC := securecookie.New(hashKey, nil)

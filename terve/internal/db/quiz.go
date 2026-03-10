@@ -47,7 +47,7 @@ func (db *DB) GetRecentQuizResults(userID int64, quizType string, limit int) ([]
 	}
 	defer rows.Close()
 
-	var results []QuizResult
+	results := []QuizResult{}
 	for rows.Next() {
 		var r QuizResult
 		if err := rows.Scan(&r.ID, &r.UserID, &r.QuizType, &r.Total, &r.Correct, &r.CreatedAt); err != nil {
@@ -75,7 +75,7 @@ func (db *DB) GetRandomUserCards(userID, excludeCardID int64, limit int) ([]Card
 	}
 	defer rows.Close()
 
-	var cards []Card
+	cards := []Card{}
 	for rows.Next() {
 		var c Card
 		if err := rows.Scan(&c.ID, &c.Finnish, &c.Lemma, &c.WordClass, &c.Morphology,
