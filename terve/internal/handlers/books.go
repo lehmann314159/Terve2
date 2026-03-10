@@ -350,6 +350,8 @@ func (h *Handlers) tokenizeParagraphs(text string) ([]Paragraph, []PlainParagrap
 		if p == "" {
 			continue
 		}
+		// Unwrap hard line breaks (Gutenberg wraps at ~72 chars).
+		p = strings.ReplaceAll(p, "\n", " ")
 		plainParagraphs = append(plainParagraphs, PlainParagraph{Number: num, Text: p})
 
 		tokens, _ := h.tokenizeText(p)
