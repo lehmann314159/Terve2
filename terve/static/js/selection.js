@@ -64,21 +64,28 @@ document.addEventListener('mouseup', function(e) {
         context = parent.textContent.trim();
     }
 
-    // Highlight selected word(s)
+    // Save the range before clearing browser selection, so we can
+    // use it to determine which word spans to highlight.
+    var savedRange = null;
+    var hadDragSelection = sel.toString().trim() !== '';
+    if (sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+    }
+
+    // Clear browser text selection first to avoid double highlight
+    sel.removeAllRanges();
+
+    // Highlight selected word(s) via CSS class
     var words = body.querySelectorAll('.word');
     words.forEach(function(w) { w.classList.remove('selected'); });
-    if (e.target.classList.contains('word') && !sel.toString().trim()) {
+    if (e.target.classList.contains('word') && !hadDragSelection) {
         e.target.classList.add('selected');
-    } else {
-        // Multi-word drag selection: highlight all word spans in range
-        if (sel.rangeCount > 0) {
-            var range = sel.getRangeAt(0);
-            words.forEach(function(w) {
-                if (range.intersectsNode(w)) {
-                    w.classList.add('selected');
-                }
-            });
-        }
+    } else if (savedRange) {
+        words.forEach(function(w) {
+            if (savedRange.intersectsNode(w)) {
+                w.classList.add('selected');
+            }
+        });
     }
 
     // Send to analysis endpoint
@@ -92,9 +99,6 @@ document.addEventListener('mouseup', function(e) {
     if (panel) {
         panel.innerHTML = '<h3>Analysis</h3><div class="loading"><div class="spinner"></div><p>Analyzing...</p></div>';
     }
-
-    // Clear browser text selection (visual highlight stays via .selected class)
-    sel.removeAllRanges();
 });
 
 // --- Paragraph bookmark ---
