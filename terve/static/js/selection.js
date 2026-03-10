@@ -19,6 +19,37 @@ document.addEventListener('mouseup', function(e) {
     var sel = window.getSelection();
     var text = sel.toString().trim();
 
+    // Expand partial selections to full word boundaries
+    if (text) {
+        if (sel.rangeCount > 0) {
+            var range = sel.getRangeAt(0);
+
+            // Expand start to the left until whitespace
+            var startNode = range.startContainer;
+            var startOffset = range.startOffset;
+            if (startNode.nodeType === Node.TEXT_NODE) {
+                var txt = startNode.textContent;
+                while (startOffset > 0 && !/\s/.test(txt[startOffset - 1])) {
+                    startOffset--;
+                }
+                range.setStart(startNode, startOffset);
+            }
+
+            // Expand end to the right until whitespace
+            var endNode = range.endContainer;
+            var endOffset = range.endOffset;
+            if (endNode.nodeType === Node.TEXT_NODE) {
+                var etxt = endNode.textContent;
+                while (endOffset < etxt.length && !/\s/.test(etxt[endOffset])) {
+                    endOffset++;
+                }
+                range.setEnd(endNode, endOffset);
+            }
+
+            text = range.toString().trim();
+        }
+    }
+
     // If no selection, check if a word span was clicked
     if (!text && e.target.classList.contains('word')) {
         text = e.target.textContent.trim();
