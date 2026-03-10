@@ -35,19 +35,17 @@
             <p>Identify conjugated forms of verbs</p>
         </a>
 
-        <div class="quiz-type-card quiz-type-locked">
+        <a href="/quiz/cloze" class="quiz-type-card">
             <div class="quiz-type-icon">&#x2702;</div>
             <h2>Cloze</h2>
             <p>Fill in the missing word from a sentence</p>
-            <span class="quiz-coming-soon">Coming Soon</span>
-        </div>
+        </a>
 
-        <div class="quiz-type-card quiz-type-locked">
+        <a href="/quiz/sentence-translation" class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F310;</div>
             <h2>Sentence Translation</h2>
             <p>Translate Finnish sentences to English</p>
-            <span class="quiz-coming-soon">Coming Soon</span>
-        </div>
+        </a>
     </div>
 
     {{if .RecentResults}}
@@ -174,6 +172,50 @@
             <input type="hidden" name="correct" value="{{$.CorrectValue}}">
             <input type="hidden" name="word" value="{{$.Lemma}}">
             <input type="hidden" name="target" value="{{$.TargetForm}}">
+            <input type="hidden" name="q" value="{{$.QuestionNum}}">
+            <input type="hidden" name="s" value="{{$.Score}}">
+            <input type="hidden" name="used" value="{{$.UsedIDs}}">
+            <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "cloze-question"}}
+<div class="quiz-question">
+    <div class="quiz-progress">Question {{.QuestionNum}} of {{.Total}} &mdash; Score: {{.Score}}</div>
+    <div class="quiz-prompt">Fill in the blank:</div>
+    <div class="quiz-word">{{.Sentence}}</div>
+    <div class="quiz-hint">Lemma: {{.Lemma}}</div>
+    <div class="quiz-options">
+        {{range .Options}}
+        <form hx-post="/quiz/cloze/answer" hx-target="#quiz-area" hx-swap="innerHTML" style="display:contents">
+            <input type="hidden" name="selected" value="{{.Value}}">
+            <input type="hidden" name="correct" value="{{$.CorrectValue}}">
+            <input type="hidden" name="word" value="{{$.Lemma}}">
+            <input type="hidden" name="q" value="{{$.QuestionNum}}">
+            <input type="hidden" name="s" value="{{$.Score}}">
+            <input type="hidden" name="used" value="{{$.UsedIDs}}">
+            <button type="submit" class="btn quiz-option-btn">{{.Display}}</button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "sentence-translation-question"}}
+<div class="quiz-question">
+    <div class="quiz-progress">Question {{.QuestionNum}} of {{.Total}} &mdash; Score: {{.Score}}</div>
+    <div class="quiz-prompt">What does this sentence mean?</div>
+    <div class="quiz-word">{{.Finnish}}</div>
+    <div class="quiz-hint">Key word: {{.Lemma}}</div>
+    <div class="quiz-options">
+        {{range .Options}}
+        <form hx-post="/quiz/sentence-translation/answer" hx-target="#quiz-area" hx-swap="innerHTML" style="display:contents">
+            <input type="hidden" name="selected" value="{{.Value}}">
+            <input type="hidden" name="correct" value="{{$.CorrectValue}}">
+            <input type="hidden" name="word" value="{{$.Lemma}}">
             <input type="hidden" name="q" value="{{$.QuestionNum}}">
             <input type="hidden" name="s" value="{{$.Score}}">
             <input type="hidden" name="used" value="{{$.UsedIDs}}">

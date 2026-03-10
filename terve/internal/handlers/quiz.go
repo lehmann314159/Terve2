@@ -14,6 +14,26 @@ import (
 	"github.com/lehmann314159/terve2/internal/ollama"
 )
 
+// --- Cloze & Sentence Translation data types ---
+
+type ClozeQuestionData struct {
+	Sentence                     string
+	Lemma                        string
+	Options                      []QuizOption
+	CorrectValue                 string
+	QuestionNum, Total, Score    int
+	UsedIDs                      string
+}
+
+type SentenceTranslationQuestionData struct {
+	Finnish                      string
+	Lemma                        string
+	Options                      []QuizOption
+	CorrectValue                 string
+	QuestionNum, Total, Score    int
+	UsedIDs                      string
+}
+
 // --- Data types ---
 
 type QuizHubData struct {
@@ -921,6 +941,331 @@ func (h *Handlers) ConjugationAnswer(w http.ResponseWriter, r *http.Request) {
 		Total:         10,
 		Score:         score,
 		QuizSlug:      "conjugation",
+		UsedIDs:       used,
+	})
+}
+
+// --- Cloze quiz ---
+
+// getOrGenerateSentences returns cached sentences for a lemma, or generates
+// them via Ollama on a cache miss and saves them to the DB.
+func (h *Handlers) getOrGenerateSentences(lemma, wordClass string) ([]db.CachedSentence, error) {
+	cached, err := h.db.GetSentencesByLemma(lemma)
+	if err != nil {
+		return nil, err
+	}
+	if len(cached) > 0 {
+		return cached, nil
+	}
+
+	entries, err := ollama.GenerateSentences(h.ollama, lemma, wordClass)
+	if err != nil {
+		return nil, err
+	}
+
+	var sentences []db.CachedSentence
+	for _, e := range entries {
+		sentences = append(sentences, db.CachedSentence{
+			Lemma:      lemma,
+			Finnish:    e.Finnish,
+			English:    e.English,
+			TargetForm: e.TargetForm,
+		})
+	}
+
+	if err := h.db.SaveSentences(sentences); err != nil {
+		log.Printf("save sentence cache: %v", err)
+	}
+
+	// Re-fetch to get IDs
+	return h.db.GetSentencesByLemma(lemma)
+}
+
+// blankTargetForm replaces the first case-insensitive occurrence of targetForm
+// in sentence with "___". Returns the blanked sentence and true, or the
+// original sentence and false if not found.
+func blankTargetForm(sentence, targetForm string) (string, bool) {
+	lower := strings.ToLower(sentence)
+	target := strings.ToLower(targetForm)
+	idx := strings.Index(lower, target)
+	if idx < 0 {
+		return sentence, false
+	}
+	return sentence[:idx] + "___" + sentence[idx+len(targetForm):], true
+}
+
+// ClozePage renders the cloze quiz session page.
+func (h *Handlers) ClozePage(w http.ResponseWriter, r *http.Request) {
+	h.render(w, "base", QuizSessionData{
+		PageData:  pageData(r, "Terve — Cloze", "quiz-session"),
+		QuizType:  "cloze",
+		QuizSlug:  "cloze",
+		QuizTitle: "Cloze",
+	})
+}
+
+// ClozeQuestion generates a single cloze question (HTMX partial).
+func (h *Handlers) ClozeQuestion(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
+	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
+	used := r.URL.Query().Get("used")
+	if qNum < 1 {
+		qNum = 1
+	}
+
+	excludeIDs := parseUsedIDs(used)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
+		if err != nil {
+			log.Printf("cloze quiz: get card: %v", err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "You need flashcards in your deck to take quizzes. Add some cards first!",
+			})
+			return
+		}
+
+		wordClass := card.WordClass
+		if wordClass == "" {
+			wordClass = "word"
+		}
+		lemma := card.Lemma
+
+		sentences, err := h.getOrGenerateSentences(lemma, wordClass)
+		if err != nil {
+			log.Printf("cloze quiz: get sentences for %q: %v", lemma, err)
+			excludeIDs = append(excludeIDs, card.ID)
+			continue
+		}
+
+		if len(sentences) == 0 {
+			excludeIDs = append(excludeIDs, card.ID)
+			continue
+		}
+
+		// Pick a random sentence
+		s := sentences[rand.IntN(len(sentences))]
+		blanked, ok := blankTargetForm(s.Finnish, s.TargetForm)
+		if !ok {
+			excludeIDs = append(excludeIDs, card.ID)
+			continue
+		}
+
+		// Build distractors: prefer same word class from user's deck
+		distractorCards, _ := h.db.GetRandomUserCards(sess.DBUserID, card.ID, 6)
+		options := []QuizOption{{Value: s.TargetForm, Display: s.TargetForm}}
+		seen := map[string]bool{strings.ToLower(s.TargetForm): true}
+
+		// Prefer same word class
+		for _, d := range distractorCards {
+			if len(options) >= 4 {
+				break
+			}
+			lower := strings.ToLower(d.Finnish)
+			if !seen[lower] && strings.EqualFold(d.WordClass, wordClass) {
+				options = append(options, QuizOption{Value: d.Finnish, Display: d.Finnish})
+				seen[lower] = true
+			}
+		}
+		// Fill remaining with any word class
+		for _, d := range distractorCards {
+			if len(options) >= 4 {
+				break
+			}
+			lower := strings.ToLower(d.Finnish)
+			if !seen[lower] {
+				options = append(options, QuizOption{Value: d.Finnish, Display: d.Finnish})
+				seen[lower] = true
+			}
+		}
+
+		rand.Shuffle(len(options), func(i, j int) {
+			options[i], options[j] = options[j], options[i]
+		})
+
+		h.renderPartial(w, "cloze-question", ClozeQuestionData{
+			Sentence:     blanked,
+			Lemma:        lemma,
+			Options:      options,
+			CorrectValue: s.TargetForm,
+			QuestionNum:  qNum,
+			Total:        10,
+			Score:        score,
+			UsedIDs:      appendUsedID(used, card.ID),
+		})
+		return
+	}
+
+	h.renderPartial(w, "quiz-error", map[string]string{
+		"Error": "Could not generate a cloze question. Make sure Ollama is running and you have cards in your deck.",
+	})
+}
+
+// ClozeAnswer checks a cloze answer (HTMX partial).
+func (h *Handlers) ClozeAnswer(w http.ResponseWriter, r *http.Request) {
+	selected := r.FormValue("selected")
+	correct := r.FormValue("correct")
+	word := r.FormValue("word")
+	qNum, _ := strconv.Atoi(r.FormValue("q"))
+	score, _ := strconv.Atoi(r.FormValue("s"))
+	used := r.FormValue("used")
+
+	isCorrect := strings.EqualFold(selected, correct)
+	if isCorrect {
+		score++
+	}
+
+	explanation := fmt.Sprintf("The missing word is \"%s\" (lemma: %s)", correct, word)
+
+	h.renderPartial(w, "quiz-answer", QuizAnswerData{
+		Correct:       isCorrect,
+		SelectedValue: selected,
+		CorrectValue:  correct,
+		Word:          word,
+		Explanation:   explanation,
+		QuestionNum:   qNum,
+		Total:         10,
+		Score:         score,
+		QuizSlug:      "cloze",
+		UsedIDs:       used,
+	})
+}
+
+// --- Sentence Translation quiz ---
+
+// SentenceTranslationPage renders the sentence translation quiz session page.
+func (h *Handlers) SentenceTranslationPage(w http.ResponseWriter, r *http.Request) {
+	h.render(w, "base", QuizSessionData{
+		PageData:  pageData(r, "Terve — Sentence Translation", "quiz-session"),
+		QuizType:  "sentence_translation",
+		QuizSlug:  "sentence-translation",
+		QuizTitle: "Sentence Translation",
+	})
+}
+
+// SentenceTranslationQuestion generates a sentence translation question (HTMX partial).
+func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
+	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
+	used := r.URL.Query().Get("used")
+	if qNum < 1 {
+		qNum = 1
+	}
+
+	excludeIDs := parseUsedIDs(used)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		card, err := h.db.GetWeightedRandomUserCard(sess.DBUserID, excludeIDs)
+		if err != nil {
+			log.Printf("sentence translation quiz: get card: %v", err)
+			h.renderPartial(w, "quiz-error", map[string]string{
+				"Error": "You need flashcards in your deck to take quizzes. Add some cards first!",
+			})
+			return
+		}
+
+		wordClass := card.WordClass
+		if wordClass == "" {
+			wordClass = "word"
+		}
+		lemma := card.Lemma
+
+		sentences, err := h.getOrGenerateSentences(lemma, wordClass)
+		if err != nil {
+			log.Printf("sentence translation quiz: get sentences for %q: %v", lemma, err)
+			excludeIDs = append(excludeIDs, card.ID)
+			continue
+		}
+
+		if len(sentences) == 0 {
+			excludeIDs = append(excludeIDs, card.ID)
+			continue
+		}
+
+		// Pick a random sentence
+		s := sentences[rand.IntN(len(sentences))]
+
+		// Build distractors: cached translations from other lemmas
+		options := []QuizOption{{Value: s.English, Display: s.English}}
+		seen := map[string]bool{strings.ToLower(s.English): true}
+
+		otherSentences, _ := h.db.GetRandomSentencesExcludingLemma(lemma, 6)
+		for _, os := range otherSentences {
+			if len(options) >= 4 {
+				break
+			}
+			lower := strings.ToLower(os.English)
+			if !seen[lower] {
+				options = append(options, QuizOption{Value: os.English, Display: os.English})
+				seen[lower] = true
+			}
+		}
+
+		// Fall back to card translations if we don't have enough distractors
+		if len(options) < 4 {
+			distractorCards, _ := h.db.GetRandomUserCards(sess.DBUserID, card.ID, 6)
+			for _, d := range distractorCards {
+				if len(options) >= 4 {
+					break
+				}
+				lower := strings.ToLower(d.Translation)
+				if d.Translation != "" && !seen[lower] {
+					options = append(options, QuizOption{Value: d.Translation, Display: d.Translation})
+					seen[lower] = true
+				}
+			}
+		}
+
+		rand.Shuffle(len(options), func(i, j int) {
+			options[i], options[j] = options[j], options[i]
+		})
+
+		h.renderPartial(w, "sentence-translation-question", SentenceTranslationQuestionData{
+			Finnish:      s.Finnish,
+			Lemma:        lemma,
+			Options:      options,
+			CorrectValue: s.English,
+			QuestionNum:  qNum,
+			Total:        10,
+			Score:        score,
+			UsedIDs:      appendUsedID(used, card.ID),
+		})
+		return
+	}
+
+	h.renderPartial(w, "quiz-error", map[string]string{
+		"Error": "Could not generate a translation question. Make sure Ollama is running and you have cards in your deck.",
+	})
+}
+
+// SentenceTranslationAnswer checks a sentence translation answer (HTMX partial).
+func (h *Handlers) SentenceTranslationAnswer(w http.ResponseWriter, r *http.Request) {
+	selected := r.FormValue("selected")
+	correct := r.FormValue("correct")
+	word := r.FormValue("word")
+	qNum, _ := strconv.Atoi(r.FormValue("q"))
+	score, _ := strconv.Atoi(r.FormValue("s"))
+	used := r.FormValue("used")
+
+	isCorrect := strings.EqualFold(selected, correct)
+	if isCorrect {
+		score++
+	}
+
+	explanation := fmt.Sprintf("The sentence means: \"%s\"", correct)
+
+	h.renderPartial(w, "quiz-answer", QuizAnswerData{
+		Correct:       isCorrect,
+		SelectedValue: selected,
+		CorrectValue:  correct,
+		Word:          word,
+		Explanation:   explanation,
+		QuestionNum:   qNum,
+		Total:         10,
+		Score:         score,
+		QuizSlug:      "sentence-translation",
 		UsedIDs:       used,
 	})
 }

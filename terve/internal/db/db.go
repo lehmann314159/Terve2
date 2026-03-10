@@ -177,6 +177,25 @@ func (db *DB) migrate() error {
 		return err
 	}
 
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS sentence_cache (
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			lemma       TEXT NOT NULL,
+			finnish     TEXT NOT NULL,
+			english     TEXT NOT NULL,
+			target_form TEXT NOT NULL,
+			created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_sentence_cache_lemma ON sentence_cache(lemma)`)
+	if err != nil {
+		return err
+	}
+
 	if err := db.seedCards(); err != nil {
 		return err
 	}

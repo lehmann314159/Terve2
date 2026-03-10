@@ -793,6 +793,89 @@ func TestGetParadigm_CacheMiss(t *testing.T) {
 	}
 }
 
+// --- Sentence cache tests ---
+
+func TestSaveSentences_AndGetByLemma(t *testing.T) {
+	db := testDB(t)
+
+	sentences := []CachedSentence{
+		{Lemma: "talo", Finnish: "Menen taloon.", English: "I go to the house.", TargetForm: "taloon"},
+		{Lemma: "talo", Finnish: "Talo on suuri.", English: "The house is big.", TargetForm: "Talo"},
+	}
+
+	err := db.SaveSentences(sentences)
+	if err != nil {
+		t.Fatalf("SaveSentences: %v", err)
+	}
+
+	got, err := db.GetSentencesByLemma("talo")
+	if err != nil {
+		t.Fatalf("GetSentencesByLemma: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 sentences, got %d", len(got))
+	}
+	if got[0].Finnish != "Menen taloon." {
+		t.Errorf("finnish = %q, want %q", got[0].Finnish, "Menen taloon.")
+	}
+	if got[0].ID == 0 {
+		t.Error("expected non-zero ID after save")
+	}
+}
+
+func TestGetSentencesByLemma_Empty(t *testing.T) {
+	db := testDB(t)
+
+	got, err := db.GetSentencesByLemma("nonexistent")
+	if err != nil {
+		t.Fatalf("GetSentencesByLemma: %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil slice for no results, got %d items", len(got))
+	}
+}
+
+func TestGetRandomSentencesExcludingLemma(t *testing.T) {
+	db := testDB(t)
+
+	sentences := []CachedSentence{
+		{Lemma: "talo", Finnish: "Talo on suuri.", English: "The house is big.", TargetForm: "Talo"},
+		{Lemma: "koira", Finnish: "Koira juoksee.", English: "The dog runs.", TargetForm: "Koira"},
+		{Lemma: "kissa", Finnish: "Kissa nukkuu.", English: "The cat sleeps.", TargetForm: "Kissa"},
+	}
+	db.SaveSentences(sentences)
+
+	got, err := db.GetRandomSentencesExcludingLemma("talo", 10)
+	if err != nil {
+		t.Fatalf("GetRandomSentencesExcludingLemma: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 sentences (excluding talo), got %d", len(got))
+	}
+	for _, s := range got {
+		if s.Lemma == "talo" {
+			t.Error("excluded lemma should not appear in results")
+		}
+	}
+}
+
+func TestGetRandomSentencesExcludingLemma_NoOthers(t *testing.T) {
+	db := testDB(t)
+
+	sentences := []CachedSentence{
+		{Lemma: "talo", Finnish: "Talo on suuri.", English: "The house is big.", TargetForm: "Talo"},
+	}
+	db.SaveSentences(sentences)
+
+	got, err := db.GetRandomSentencesExcludingLemma("talo", 10)
+	if err != nil {
+		t.Fatalf("GetRandomSentencesExcludingLemma: %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil when only excluded lemma exists, got %d items", len(got))
+	}
+}
+
 func TestSaveParadigm_Upsert(t *testing.T) {
 	db := testDB(t)
 
