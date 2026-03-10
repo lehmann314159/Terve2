@@ -7,7 +7,7 @@ services:
       - PORT=3000
       - VOIKKO_URL=http://voikko:8000
       - OLLAMA_URL=http://host-gateway:11434
-      - OLLAMA_MODEL=qwen2.5:72b-instruct-q4_K_M
+      - OLLAMA_MODEL=qwen2.5:32b-instruct-q4_K_M
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}

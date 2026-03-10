@@ -16,7 +16,7 @@ func main() {
 	port := envOr("PORT", "3000")
 	voikkoURL := envOr("VOIKKO_URL", "http://localhost:8000")
 	ollamaURL := envOr("OLLAMA_URL", "http://localhost:11434")
-	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:72b-instruct-q4_K_M")
+	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:32b-instruct-q4_K_M")
 	dbPath := envOr("DB_PATH", "./data/terve.db")
 
 	authCfg := auth.AuthConfig{
