@@ -53,7 +53,8 @@ func Download(id int) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("gutenberg download: read body: %w", err)
 	}
-	return string(body), nil
+	// Normalize Windows line endings (Gutenberg texts use \r\n).
+	return strings.ReplaceAll(string(body), "\r", ""), nil
 }
 
 // StripBoilerplate removes the Project Gutenberg header and footer.

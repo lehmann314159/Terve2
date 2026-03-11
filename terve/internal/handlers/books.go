@@ -340,6 +340,8 @@ func (h *Handlers) tokenizeText(text string) ([]voikko.TokenAnalysis, string) {
 // each paragraph individually via Voikko. This avoids relying on Voikko's
 // tokenizer to preserve paragraph boundaries.
 func (h *Handlers) tokenizeParagraphs(text string) ([]Paragraph, []PlainParagraph) {
+	// Normalize Windows line endings (Gutenberg texts use \r\n).
+	text = strings.ReplaceAll(text, "\r", "")
 	parts := strings.Split(text, "\n\n")
 	var paragraphs []Paragraph
 	var plainParagraphs []PlainParagraph
