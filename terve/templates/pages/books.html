@@ -22,7 +22,10 @@
         {{range .Books}}
         <a href="/books/{{.ID}}" class="book-card">
             <div class="book-card-body">
-                <h2 class="book-card-title">{{.Title}}</h2>
+                <div class="book-card-header">
+                    <h2 class="book-card-title">{{.Title}}</h2>
+                    {{if .Difficulty}}<span class="cefr-badge cefr-{{.Difficulty}}">{{.Difficulty}}</span>{{end}}
+                </div>
                 <p class="book-card-author">{{.Author}}</p>
                 <p class="book-card-meta">{{.ChapterCount}} {{if eq .ChapterCount 1}}chapter{{else}}chapters{{end}}</p>
                 {{if $.User}}{{if index $.Bookmarks .ID}}
@@ -45,6 +48,7 @@
             <div class="book-title-bar">
                 <h2 class="article-title">{{.Book.Title}}</h2>
                 <span class="book-author-label">by {{.Book.Author}}</span>
+                {{if .Book.Difficulty}}<span class="cefr-badge cefr-{{.Book.Difficulty}}">{{.Book.Difficulty}}</span>{{end}}
             </div>
         </div>
 

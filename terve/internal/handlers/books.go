@@ -11,6 +11,7 @@ import (
 	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/db"
 	"github.com/lehmann314159/terve2/internal/gutenberg"
+	"github.com/lehmann314159/terve2/internal/ollama"
 	"github.com/lehmann314159/terve2/internal/voikko"
 )
 
@@ -312,6 +313,22 @@ func (h *Handlers) ImportBook(w http.ResponseWriter, r *http.Request) {
 		if _, err := h.db.InsertChapter(bookID, ch.Number, ch.Title, ch.Body); err != nil {
 			log.Printf("insert imported chapter %d: %v", ch.Number, err)
 			failedChapters++
+		}
+	}
+
+	// Estimate CEFR difficulty from the first chapter's text sample.
+	if len(chapters) > 0 {
+		sample := chapters[0].Body
+		if len(sample) > 800 {
+			sample = sample[:800]
+		}
+		resp, err := h.ollama.Generate(ollama.DifficultySystemPrompt, ollama.BuildDifficultyPrompt(sample))
+		if err != nil {
+			log.Printf("difficulty estimation for book %d: %v", bookID, err)
+		} else if level := ollama.ParseDifficultyResponse(resp); level != "" {
+			if err := h.db.UpdateBookDifficulty(bookID, level); err != nil {
+				log.Printf("update book difficulty: %v", err)
+			}
 		}
 	}
 

@@ -71,6 +71,24 @@ func BuildPrompt(text, context string, tokens []voikko.TokenAnalysis) string {
 	return b.String()
 }
 
+// DifficultySystemPrompt instructs the LLM to assess CEFR level.
+const DifficultySystemPrompt = `You are a Finnish language difficulty assessor. When given a Finnish text sample, respond with only the CEFR level that best describes the reading difficulty for a Finnish language learner. Use exactly one of: A1, A2, B1, B2, C1, C2. No other text.`
+
+// BuildDifficultyPrompt builds the prompt for CEFR difficulty estimation from a text sample.
+func BuildDifficultyPrompt(sample string) string {
+	return fmt.Sprintf("Rate the CEFR difficulty of this Finnish text:\n\n%s", sample)
+}
+
+// ParseDifficultyResponse extracts a CEFR level from the LLM response.
+func ParseDifficultyResponse(response string) string {
+	for _, level := range []string{"A1", "A2", "B1", "B2", "C1", "C2"} {
+		if strings.Contains(strings.ToUpper(response), level) {
+			return level
+		}
+	}
+	return ""
+}
+
 // ParseResponse splits the LLM response into translation and explanation parts.
 func ParseResponse(response string) (translation, explanation string) {
 	lines := strings.Split(response, "\n")

@@ -45,7 +45,6 @@ services:
 
 volumes:
   terve-data:
-
 networks:
   internal:
     driver: bridge

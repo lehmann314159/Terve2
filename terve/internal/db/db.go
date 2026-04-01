@@ -148,6 +148,9 @@ func (db *DB) migrate() error {
 	// Migration for existing DBs: add paragraph column if missing.
 	db.Exec(`ALTER TABLE user_bookmarks ADD COLUMN paragraph INTEGER NOT NULL DEFAULT 0`)
 
+	// Migration for existing DBs: add difficulty column to books if missing.
+	db.Exec(`ALTER TABLE books ADD COLUMN difficulty TEXT NOT NULL DEFAULT ''`)
+
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS quiz_results (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -707,11 +707,33 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transform: translateY(-2px);
 }
+.book-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
 .book-card-title {
     font-size: 1.1rem;
     color: var(--primary);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0;
 }
+.cefr-badge {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    color: #fff;
+    letter-spacing: 0.03em;
+}
+.cefr-A1 { background: #16a34a; }
+.cefr-A2 { background: #65a30d; }
+.cefr-B1 { background: #ca8a04; }
+.cefr-B2 { background: #ea580c; }
+.cefr-C1 { background: #dc2626; }
+.cefr-C2 { background: #7c3aed; }
 .book-card-author {
     color: var(--text-light);
     font-size: 0.9rem;

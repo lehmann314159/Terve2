@@ -8,13 +8,14 @@ import (
 
 // Book represents a row in the books table.
 type Book struct {
-	ID          int64
-	Title       string
-	Author      string
-	Description string
-	GutenbergID *int
-	Source      string
-	CreatedAt   time.Time
+	ID           int64
+	Title        string
+	Author       string
+	Description  string
+	GutenbergID  *int
+	Source       string
+	Difficulty   string
+	CreatedAt    time.Time
 	ChapterCount int // populated by list queries
 }
 
@@ -90,7 +91,7 @@ func (db *DB) InsertChapter(bookID int64, chapterNumber int, title, content stri
 // ListBooks returns all books with chapter counts.
 func (db *DB) ListBooks() ([]Book, error) {
 	rows, err := db.Query(`
-		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.created_at,
+		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.created_at,
 		       (SELECT COUNT(*) FROM book_chapters bc WHERE bc.book_id = b.id) AS chapter_count
 		FROM books b
 		ORDER BY b.title ASC
@@ -104,7 +105,7 @@ func (db *DB) ListBooks() ([]Book, error) {
 	for rows.Next() {
 		var b Book
 		var gid sql.NullInt64
-		if err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.CreatedAt, &b.ChapterCount); err != nil {
+		if err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.CreatedAt, &b.ChapterCount); err != nil {
 			return nil, err
 		}
 		if gid.Valid {
@@ -116,15 +117,21 @@ func (db *DB) ListBooks() ([]Book, error) {
 	return books, rows.Err()
 }
 
+// UpdateBookDifficulty sets the CEFR difficulty level for a book.
+func (db *DB) UpdateBookDifficulty(bookID int64, difficulty string) error {
+	_, err := db.Exec(`UPDATE books SET difficulty = ? WHERE id = ?`, difficulty, bookID)
+	return err
+}
+
 // GetBook returns a single book by ID.
 func (db *DB) GetBook(bookID int64) (*Book, error) {
 	var b Book
 	var gid sql.NullInt64
 	err := db.QueryRow(`
-		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.created_at,
+		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.created_at,
 		       (SELECT COUNT(*) FROM book_chapters bc WHERE bc.book_id = b.id) AS chapter_count
 		FROM books b WHERE b.id = ?
-	`, bookID).Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.CreatedAt, &b.ChapterCount)
+	`, bookID).Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.CreatedAt, &b.ChapterCount)
 	if err != nil {
 		return nil, err
 	}
