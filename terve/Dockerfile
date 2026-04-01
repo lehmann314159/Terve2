@@ -8,7 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o terve ./cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o terve ./cmd/server/main.go && \
+    CGO_ENABLED=0 GOOS=linux go build -o benchmark ./cmd/benchmark/main.go
 
 # Runtime stage
 FROM alpine:3.21
@@ -18,6 +19,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/terve .
+COPY --from=builder /app/benchmark .
 COPY --from=builder /app/templates ./templates
 COPY --from=builder /app/static ./static
 
