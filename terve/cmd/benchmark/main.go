@@ -171,6 +171,26 @@ func runModel(model string, vc *voikko.Client, ollamaURL string, hc *http.Client
 	var totalOllamaMs, totalTps float64
 	var count int
 
+	// Warmup: run the first test case cold, then immediately warm.
+	// Cold - warm = estimated model-switch overhead.
+	warmupTC := testCases[0]
+	fmt.Printf("  %-34s ", "warmup (cold)...")
+	cold := runTestCase(warmupTC, vc, ollamaURL, model, hc)
+	if cold.err != nil {
+		fmt.Printf("ERROR: %v\n", cold.err)
+	} else {
+		fmt.Printf("%6.0fms\n", cold.ollamaMs)
+
+		fmt.Printf("  %-34s ", "warmup (warm)...")
+		warm := runTestCase(warmupTC, vc, ollamaURL, model, hc)
+		if warm.err != nil {
+			fmt.Printf("ERROR: %v\n", warm.err)
+		} else {
+			overhead := cold.ollamaMs - warm.ollamaMs
+			fmt.Printf("%6.0fms  (~%.0fms cold-start overhead)\n", warm.ollamaMs, overhead)
+		}
+	}
+
 	for _, tc := range testCases {
 		fmt.Printf("  %-34s ", tc.label+"...")
 
