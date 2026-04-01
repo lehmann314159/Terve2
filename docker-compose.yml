@@ -18,6 +18,8 @@ services:
       - DB_PATH=/app/data/terve.db
     volumes:
       - terve-data:/app/data
+      - ./terve/static:/app/static
+      - ./terve/templates:/app/templates
     extra_hosts:
       - "host-gateway:host-gateway"
     depends_on:

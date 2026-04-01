@@ -161,6 +161,10 @@ body {
 .btn:hover { background: var(--primary-dark); }
 
 /* --- Reading Layout --- */
+.container:has(.reading-layout) {
+    max-width: 98%;
+    padding: 1rem;
+}
 .reading-layout {
     display: grid;
     grid-template-columns: 3fr 2fr;
