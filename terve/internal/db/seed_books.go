@@ -188,8 +188,11 @@ var seedBookList = []seedBook{
 // seedBooks inserts the curated starter books into the database (idempotent).
 func (db *DB) seedBooks() error {
 	for _, sb := range seedBookList {
-		// Skip if already seeded
+		// If already seeded, backfill difficulty if missing.
 		if db.BookExistsByGutenbergID(sb.GutenbergID) {
+			if sb.Difficulty != "" {
+				db.Exec(`UPDATE books SET difficulty = ? WHERE gutenberg_id = ? AND difficulty = ''`, sb.Difficulty, sb.GutenbergID)
+			}
 			continue
 		}
 
