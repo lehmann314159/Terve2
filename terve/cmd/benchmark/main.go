@@ -314,21 +314,37 @@ func printComparison(summaries []modelSummary) {
 }
 
 func printPreviews(summaries []modelSummary) {
-	fmt.Println("Response previews (last model, last run):")
-	fmt.Println()
 	if len(summaries) == 0 {
 		return
 	}
-	last := summaries[len(summaries)-1]
-	for _, r := range last.results {
-		if r.err != nil {
-			continue
+
+	sep := strings.Repeat("═", 72)
+	fmt.Printf("%s\n", sep)
+	fmt.Println("FULL RESPONSES — paste below this line to Claude for quality analysis")
+	fmt.Printf("%s\n\n", sep)
+
+	for i, tc := range testCases {
+		fmt.Printf("━━━ Test case %d: %s ━━━\n", i+1, tc.label)
+		fmt.Printf("Finnish:  %s\n", tc.text)
+		fmt.Printf("Context:  %s\n\n", tc.context)
+
+		for _, s := range summaries {
+			if i >= len(s.results) {
+				continue
+			}
+			r := s.results[i]
+			fmt.Printf("  Model: %s\n", s.model)
+			if r.err != nil {
+				fmt.Printf("  ERROR: %v\n\n", r.err)
+				continue
+			}
+			// Strip <think>...</think> block if present so the judge
+			// sees only the final answer, same as what the app uses.
+			response := stripThinking(r.response)
+			translation, explanation := ollama.ParseResponse(response)
+			fmt.Printf("  TRANSLATION: %s\n", translation)
+			fmt.Printf("  EXPLANATION: %s\n\n", explanation)
 		}
-		preview := r.response
-		if len(preview) > 120 {
-			preview = preview[:120] + "…"
-		}
-		fmt.Printf("  [%s]\n  %s\n\n", r.label, preview)
 	}
 }
 
@@ -384,6 +400,24 @@ func runTestCase(tc testCase, vc *voikko.Client, ollamaURL, model string, hc *ht
 	}
 	r.response = metrics.Response
 	return r
+}
+
+// stripThinking removes <think>...</think> blocks that Qwen3 models emit
+// before their actual response.
+func stripThinking(s string) string {
+	for {
+		start := strings.Index(s, "<think>")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(s, "</think>")
+		if end == -1 {
+			s = s[:start]
+			break
+		}
+		s = s[:start] + s[end+len("</think>"):]
+	}
+	return strings.TrimSpace(s)
 }
 
 func checkOllama(baseURL, model string, hc *http.Client) error {
