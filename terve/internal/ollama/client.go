@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -65,5 +66,23 @@ func (c *Client) Generate(system, prompt string) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
 	}
-	return result.Response, nil
+	return stripThinking(result.Response), nil
+}
+
+// stripThinking removes <think>...</think> blocks emitted by Qwen3 and
+// similar models before their actual response.
+func stripThinking(s string) string {
+	for {
+		start := strings.Index(s, "<think>")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(s, "</think>")
+		if end == -1 {
+			s = s[:start]
+			break
+		}
+		s = s[:start] + s[end+len("</think>"):]
+	}
+	return strings.TrimSpace(s)
 }
