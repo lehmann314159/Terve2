@@ -163,8 +163,9 @@ body {
 /* --- Reading Layout --- */
 .reading-layout {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 3fr 2fr;
     gap: 1.5rem;
+    align-items: start;
 }
 .text-panel {
     background: var(--bg-white);
@@ -177,6 +178,10 @@ body {
     border-radius: var(--radius);
     padding: 1.5rem;
     box-shadow: var(--shadow);
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
 }
 .analysis-panel h3 { color: var(--primary); margin-bottom: 1rem; }
 
