@@ -16,6 +16,8 @@ type AnalysisData struct {
 	Tokens            []voikko.TokenAnalysis
 	VoikkoError       string
 	LemmaTranslations map[string]string
+	LoggedIn          bool
+	SavedLemmas       map[string]int64 // lemma → user_card_id
 }
 
 // ExplainData is passed to the explanation partial template.
@@ -66,12 +68,21 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 	}
 	translations := h.db.LookupLemmaTranslations(lemmas)
 
+	sess := auth.GetSession(r.Context())
+	var savedLemmas map[string]int64
+	loggedIn := sess != nil
+	if loggedIn {
+		savedLemmas = h.db.LookupUserCardIDsByLemmas(sess.DBUserID, lemmas)
+	}
+
 	h.renderPartial(w, "analysis", AnalysisData{
 		Text:              text,
 		Context:           context,
 		Tokens:            tokens,
 		VoikkoError:       voikkoErr,
 		LemmaTranslations: translations,
+		LoggedIn:          loggedIn,
+		SavedLemmas:       savedLemmas,
 	})
 }
 

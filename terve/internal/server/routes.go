@@ -74,6 +74,8 @@ func (s *Server) setupRoutes() {
 		r.Get("/", s.handlers.FlashcardsPage)
 		r.Get("/list", s.handlers.FlashcardList)
 		r.Post("/save", s.handlers.SaveFlashcard)
+		r.Post("/save-word", s.handlers.SaveWordCard)
+		r.Post("/remove-word", s.handlers.RemoveWordCard)
 		r.Post("/validate", s.handlers.ValidateFlashcard)
 		r.Post("/add", s.handlers.AddFlashcard)
 		r.Delete("/{cardID}", s.handlers.DeleteFlashcard)

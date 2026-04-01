@@ -141,6 +141,87 @@ func (h *Handlers) SaveFlashcard(w http.ResponseWriter, r *http.Request) {
 	h.renderPartial(w, "save-result", map[string]string{"Success": "Card saved!"})
 }
 
+// WordCardBtnData is passed to the word-card-btn partial template.
+type WordCardBtnData struct {
+	Saved       bool
+	UserCardID  int64
+	Finnish     string
+	Lemma       string
+	WordClass   string
+	Morphology  string
+	Translation string
+}
+
+// SaveWordCard saves a single word from the morph table as a flashcard.
+func (h *Handlers) SaveWordCard(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+
+	finnish := r.FormValue("finnish")
+	lemma := r.FormValue("lemma")
+	if lemma == "" {
+		lemma = finnish
+	}
+	wordClass := r.FormValue("word_class")
+	morphology := r.FormValue("morphology")
+	translation := r.FormValue("translation")
+
+	card := &db.Card{
+		Finnish:     finnish,
+		Lemma:       lemma,
+		WordClass:   wordClass,
+		Morphology:  morphology,
+		Translation: translation,
+		Source:      "user",
+	}
+
+	cardID, err := h.db.CreateCard(card)
+	if err != nil {
+		log.Printf("save word card: %v", err)
+		h.renderPartial(w, "word-card-btn", WordCardBtnData{Finnish: finnish, Lemma: lemma, WordClass: wordClass, Morphology: morphology, Translation: translation})
+		return
+	}
+
+	ucID, err := h.db.SaveUserCard(sess.DBUserID, cardID)
+	if err != nil {
+		log.Printf("save user card (word): %v", err)
+		h.renderPartial(w, "word-card-btn", WordCardBtnData{Finnish: finnish, Lemma: lemma, WordClass: wordClass, Morphology: morphology, Translation: translation})
+		return
+	}
+
+	h.renderPartial(w, "word-card-btn", WordCardBtnData{
+		Saved:       true,
+		UserCardID:  ucID,
+		Finnish:     finnish,
+		Lemma:       lemma,
+		WordClass:   wordClass,
+		Morphology:  morphology,
+		Translation: translation,
+	})
+}
+
+// RemoveWordCard removes a word flashcard from the morph table.
+func (h *Handlers) RemoveWordCard(w http.ResponseWriter, r *http.Request) {
+	sess := auth.GetSession(r.Context())
+
+	ucID, err := strconv.ParseInt(r.FormValue("uc_id"), 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid card ID", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.db.DeleteUserCard(ucID, sess.DBUserID); err != nil {
+		log.Printf("remove word card: %v", err)
+	}
+
+	h.renderPartial(w, "word-card-btn", WordCardBtnData{
+		Finnish:     r.FormValue("finnish"),
+		Lemma:       r.FormValue("lemma"),
+		WordClass:   r.FormValue("word_class"),
+		Morphology:  r.FormValue("morphology"),
+		Translation: r.FormValue("translation"),
+	})
+}
+
 // ValidateFlashcardData is the preview data for manual add.
 type ValidateFlashcardData struct {
 	Finnish     string

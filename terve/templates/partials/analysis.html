@@ -21,6 +21,7 @@
 <table class="morph-table">
     <thead>
         <tr>
+            {{if $.LoggedIn}}<th></th>{{end}}
             <th>Word</th>
             <th>Lemma</th>
             <th>Class</th>
@@ -30,12 +31,39 @@
     </thead>
     <tbody>
         {{$trans := .LemmaTranslations}}
+        {{$saved := .SavedLemmas}}
+        {{$loggedIn := .LoggedIn}}
         {{range .Tokens}}
             {{if eq .Type "word"}}
                 {{$tok := .Token}}
                 {{if .Analyses}}
                     {{range .Analyses}}
                     <tr>
+                        {{if $loggedIn}}
+                        <td class="word-btn-cell">
+                            {{$ucID := index $saved .Lemma}}
+                            {{if $ucID}}
+                            <form hx-post="/flashcards/remove-word" hx-target="closest td" hx-swap="outerHTML">
+                                <input type="hidden" name="uc_id" value="{{$ucID}}">
+                                <input type="hidden" name="finnish" value="{{$tok}}">
+                                <input type="hidden" name="lemma" value="{{.Lemma}}">
+                                <input type="hidden" name="word_class" value="{{.WordClass}}">
+                                <input type="hidden" name="morphology" value="{{.Case}}{{if and .Case .Number}}, {{end}}{{.Number}}">
+                                <input type="hidden" name="translation" value="{{index $trans .Lemma}}">
+                                <button type="submit" class="btn-word-remove" title="Remove from flashcards">✕</button>
+                            </form>
+                            {{else}}
+                            <form hx-post="/flashcards/save-word" hx-target="closest td" hx-swap="outerHTML">
+                                <input type="hidden" name="finnish" value="{{$tok}}">
+                                <input type="hidden" name="lemma" value="{{.Lemma}}">
+                                <input type="hidden" name="word_class" value="{{.WordClass}}">
+                                <input type="hidden" name="morphology" value="{{.Case}}{{if and .Case .Number}}, {{end}}{{.Number}}">
+                                <input type="hidden" name="translation" value="{{index $trans .Lemma}}">
+                                <button type="submit" class="btn-word-save" title="Save as flashcard">+</button>
+                            </form>
+                            {{end}}
+                        </td>
+                        {{end}}
                         <td>{{$tok}}</td>
                         <td>{{.Lemma}}{{with index $trans .Lemma}} <span class="morph-english">({{.}})</span>{{end}}</td>
                         <td>{{.WordClass}}{{with .WordClassEnglish}} <span class="morph-english">({{.}})</span>{{end}}</td>
@@ -45,6 +73,7 @@
                     {{end}}
                 {{else}}
                 <tr>
+                    {{if $loggedIn}}<td></td>{{end}}
                     <td>{{.Token}}</td>
                     <td colspan="4" class="unrecognized">unrecognized</td>
                 </tr>
@@ -54,6 +83,31 @@
     </tbody>
 </table>
 {{end}}
+{{end}}
+
+{{define "word-card-btn"}}
+<td class="word-btn-cell">
+    {{if .Saved}}
+    <form hx-post="/flashcards/remove-word" hx-target="closest td" hx-swap="outerHTML">
+        <input type="hidden" name="uc_id" value="{{.UserCardID}}">
+        <input type="hidden" name="finnish" value="{{.Finnish}}">
+        <input type="hidden" name="lemma" value="{{.Lemma}}">
+        <input type="hidden" name="word_class" value="{{.WordClass}}">
+        <input type="hidden" name="morphology" value="{{.Morphology}}">
+        <input type="hidden" name="translation" value="{{.Translation}}">
+        <button type="submit" class="btn-word-remove" title="Remove from flashcards">✕</button>
+    </form>
+    {{else}}
+    <form hx-post="/flashcards/save-word" hx-target="closest td" hx-swap="outerHTML">
+        <input type="hidden" name="finnish" value="{{.Finnish}}">
+        <input type="hidden" name="lemma" value="{{.Lemma}}">
+        <input type="hidden" name="word_class" value="{{.WordClass}}">
+        <input type="hidden" name="morphology" value="{{.Morphology}}">
+        <input type="hidden" name="translation" value="{{.Translation}}">
+        <button type="submit" class="btn-word-save" title="Save as flashcard">+</button>
+    </form>
+    {{end}}
+</td>
 {{end}}
 
 {{define "explanation"}}

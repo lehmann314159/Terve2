@@ -216,6 +216,37 @@ func (db *DB) UserHasCard(userID int64, lemma, finnish string) bool {
 	return exists == 1
 }
 
+// LookupUserCardIDsByLemmas returns a map of lemma→user_card_id for lemmas the user has saved.
+func (db *DB) LookupUserCardIDsByLemmas(userID int64, lemmas []string) map[string]int64 {
+	result := make(map[string]int64)
+	if len(lemmas) == 0 {
+		return result
+	}
+	stmt, err := db.Prepare(`
+		SELECT uc.id FROM user_cards uc
+		JOIN cards c ON c.id = uc.card_id
+		WHERE uc.user_id = ? AND c.lemma = ?
+		LIMIT 1
+	`)
+	if err != nil {
+		return result
+	}
+	defer stmt.Close()
+
+	seen := make(map[string]bool)
+	for _, lemma := range lemmas {
+		if seen[lemma] {
+			continue
+		}
+		seen[lemma] = true
+		var ucID int64
+		if err := stmt.QueryRow(userID, lemma).Scan(&ucID); err == nil {
+			result[lemma] = ucID
+		}
+	}
+	return result
+}
+
 // LookupLemmaTranslations returns a map of lemma→translation for known lemmas.
 func (db *DB) LookupLemmaTranslations(lemmas []string) map[string]string {
 	result := make(map[string]string)
