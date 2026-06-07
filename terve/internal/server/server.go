@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -17,6 +18,7 @@ import (
 	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/db"
 	"github.com/lehmann314159/terve2/internal/handlers"
+	"github.com/lehmann314159/terve2/internal/language"
 	"github.com/lehmann314159/terve2/internal/ollama"
 	"github.com/lehmann314159/terve2/internal/voikko"
 )
@@ -31,7 +33,7 @@ type Server struct {
 }
 
 // New creates a new server instance.
-func New(port, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) (*Server, error) {
+func New(port string, driver language.Driver, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) (*Server, error) {
 	s := &Server{
 		port:   port,
 		router: chi.NewRouter(),
@@ -56,7 +58,7 @@ func New(port, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.Au
 
 	vc := voikko.NewClient(voikkoURL)
 	oc := ollama.NewClient(ollamaURL, ollamaModel)
-	s.handlers = handlers.New(s.templates, vc, oc, database)
+	s.handlers = handlers.New(s.templates, driver, vc, oc, database)
 	s.authHandlers = auth.NewAuthHandlers(authCfg, cookieStore, stateSC, s.templates, database)
 
 	// Middleware
@@ -80,8 +82,9 @@ func (s *Server) parseTemplates() {
 			b, _ := json.Marshal(s)
 			return template.JS(b)
 		},
-		"add": func(a, b int) int { return a + b },
-		"sub": func(a, b int) int { return a - b },
+		"add":  func(a, b int) int { return a + b },
+		"sub":  func(a, b int) int { return a - b },
+		"join": func(s []string, sep string) string { return strings.Join(s, sep) },
 	}
 
 	tmpl := template.New("").Funcs(funcMap)

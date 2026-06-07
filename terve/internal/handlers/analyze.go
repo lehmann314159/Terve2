@@ -3,18 +3,18 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/lehmann314159/terve2/internal/auth"
-	"github.com/lehmann314159/terve2/internal/ollama"
-	"github.com/lehmann314159/terve2/internal/voikko"
+	"github.com/lehmann314159/terve2/internal/language"
 )
 
 // AnalysisData is passed to the analysis partial template.
 type AnalysisData struct {
 	Text              string
 	Context           string
-	Tokens            []voikko.TokenAnalysis
-	VoikkoError       string
+	Tokens            []language.Token
+	AnalysisError     string
 	LemmaTranslations map[string]string
 	LoggedIn          bool
 	SavedLemmas       map[string]int64 // lemma → user_card_id
@@ -41,30 +41,24 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 
 	if text == "" {
 		h.renderPartial(w, "analysis", AnalysisData{
-			VoikkoError: "No text selected.",
+			AnalysisError: "No text selected.",
 		})
 		return
 	}
 
-	var tokens []voikko.TokenAnalysis
-	var voikkoErr string
-
-	sv, err := h.voikko.ValidateSentence(text)
+	result, err := h.driver.Analyze(text)
 	if err != nil {
-		log.Printf("Voikko error: %v", err)
-		voikkoErr = "Morphological analysis unavailable."
-	} else {
-		tokens = sv.Tokens
+		log.Printf("Driver analyze error: %v", err)
+		h.renderPartial(w, "analysis", AnalysisData{
+			AnalysisError: "Morphological analysis unavailable.",
+		})
+		return
 	}
 
 	// Look up English translations for lemmas from the cards table
 	var lemmas []string
-	for _, t := range tokens {
-		if t.Type == "word" {
-			for _, a := range t.Analyses {
-				lemmas = append(lemmas, a.Lemma)
-			}
-		}
+	for _, tok := range result.Tokens {
+		lemmas = append(lemmas, tok.Lemma)
 	}
 	translations := h.db.LookupLemmaTranslations(lemmas)
 
@@ -78,8 +72,8 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 	h.renderPartial(w, "analysis", AnalysisData{
 		Text:              text,
 		Context:           context,
-		Tokens:            tokens,
-		VoikkoError:       voikkoErr,
+		Tokens:            result.Tokens,
+		AnalysisError:     result.Error,
 		LemmaTranslations: translations,
 		LoggedIn:          loggedIn,
 		SavedLemmas:       savedLemmas,
@@ -98,15 +92,14 @@ func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Re-run Voikko to get tokens for the prompt (instant)
-	var tokens []voikko.TokenAnalysis
-	sv, err := h.voikko.ValidateSentence(text)
-	if err == nil {
-		tokens = sv.Tokens
+	// Re-run driver to get tokens for the prompt (instant)
+	result, _ := h.driver.Analyze(text)
+	if result == nil {
+		result = &language.AnalysisResult{}
 	}
 
-	prompt := ollama.BuildPrompt(text, context, tokens)
-	response, err := h.ollama.Generate(ollama.SystemPrompt, prompt)
+	prompt := h.driver.BuildPrompt(text, context, result)
+	response, err := h.ollama.Generate(h.driver.SystemPrompt(), prompt)
 	if err != nil {
 		log.Printf("Ollama error: %v", err)
 		h.renderPartial(w, "explanation", ExplainData{
@@ -115,29 +108,17 @@ func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	translation, explanation := ollama.ParseResponse(response)
+	translation, explanation := h.driver.ParseResponse(response)
 
 	// Gather data for the save-as-flashcard button
 	sess := auth.GetSession(r.Context())
 	var lemma, wordClass, morphology string
-	if len(tokens) > 0 {
-		// Use first word token's first analysis
-		for _, t := range tokens {
-			if t.Type == "word" && len(t.Analyses) > 0 {
-				a := t.Analyses[0]
-				lemma = a.Lemma
-				wordClass = a.WordClass
-				if a.Case != "" {
-					morphology = a.Case
-				}
-				if a.Number != "" {
-					if morphology != "" {
-						morphology += ", "
-					}
-					morphology += a.Number
-				}
-				break
-			}
+	if len(result.Tokens) > 0 {
+		tok := result.Tokens[0]
+		lemma = tok.Lemma
+		wordClass = tok.POS
+		if len(tok.Features) > 0 {
+			morphology = strings.Join(tok.Features, ", ")
 		}
 	}
 

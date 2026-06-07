@@ -37,13 +37,14 @@ type testCase struct {
 }
 
 var testCases = []testCase{
+	// --- Core noun/verb morphology ---
 	{
-		label:   "single common word",
+		label:   "present tense verb",
 		text:    "olen",
 		context: "Minä olen opiskelija.",
 	},
 	{
-		label:   "inflected noun",
+		label:   "inessive noun",
 		text:    "talossa",
 		context: "Hän asuu talossa.",
 	},
@@ -58,6 +59,80 @@ var testCases = []testCase{
 		context: "Juon kahvia joka aamu.",
 	},
 	{
+		label:   "illative (double vowel)",
+		text:    "kaupunkiin",
+		context: "Menen kaupunkiin huomenna.",
+	},
+	{
+		label:   "essive (role/state)",
+		text:    "opettajana",
+		context: "Hän työskentelee opettajana koulussa.",
+	},
+	// --- Verb forms ---
+	{
+		label:   "third infinitive inessive",
+		text:    "kävelemässä",
+		context: "Hän on kävelemässä puistossa.",
+	},
+	{
+		label:   "conditional mood",
+		text:    "haluaisin",
+		context: "Haluaisin lisää kahvia, kiitos.",
+	},
+	{
+		label:   "passive present",
+		text:    "puhutaan",
+		context: "Täällä puhutaan suomea ja ruotsia.",
+	},
+	{
+		label:   "passive past",
+		text:    "rakennettiin",
+		context: "Tämä silta rakennettiin viime vuonna.",
+	},
+	{
+		label:   "negation verb",
+		text:    "en osaa",
+		context: "En osaa puhua suomea hyvin.",
+	},
+	{
+		label:   "necessity modal",
+		text:    "täytyy",
+		context: "Minun täytyy lähteä nyt.",
+	},
+	// --- Particles and clitics ---
+	{
+		label:   "question clitic (-ko)",
+		text:    "Tuletko",
+		context: "Tuletko sinä huomenna töihin?",
+	},
+	{
+		label:   "question word",
+		text:    "miksi",
+		context: "Miksi hän ei tullut eilen?",
+	},
+	// --- Compound words and complex morphology ---
+	{
+		label:   "compound word",
+		text:    "kirjastokortti",
+		context: "Tarvitsen kirjastokortin lainaamista varten.",
+	},
+	{
+		label:   "compound with inflection",
+		text:    "terveyskeskuksessa",
+		context: "Odotan terveyskeskuksessa vuoroani.",
+	},
+	{
+		label:   "possessive suffix",
+		text:    "talossani",
+		context: "Asun talossani kaupungin lähellä.",
+	},
+	{
+		label:   "comparative adverb",
+		text:    "nopeammin",
+		context: "Hän juoksee nopeammin kuin minä.",
+	},
+	// --- Phrases ---
+	{
 		label:   "short phrase",
 		text:    "minä olen kotona",
 		context: "Minä olen kotona tänään.",
@@ -66,16 +141,6 @@ var testCases = []testCase{
 		label:   "longer phrase",
 		text:    "Hän meni kauppaan ostamaan leipää",
 		context: "Hän meni kauppaan ostamaan leipää ja maitoa.",
-	},
-	{
-		label:   "tricky morphology",
-		text:    "kävelemässä",
-		context: "Hän on kävelemässä puistossa.",
-	},
-	{
-		label:   "compound word",
-		text:    "kirjastokortti",
-		context: "Tarvitsen kirjastokortin lainaamista varten.",
 	},
 }
 
