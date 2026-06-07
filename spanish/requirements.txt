@@ -1,5 +1,3 @@
 fastapi
 uvicorn
 spacy
-mlconjug3
-scikit-learn==1.6.1
