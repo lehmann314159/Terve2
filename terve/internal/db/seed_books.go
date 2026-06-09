@@ -17,6 +17,7 @@ type seedBook struct {
 	Description string
 	GutenbergID int
 	Difficulty  string
+	Lang        string // "fi" or "es"; defaults to "fi"
 }
 
 var seedBookList = []seedBook{
@@ -183,6 +184,63 @@ var seedBookList = []seedBook{
 		GutenbergID: 11940,
 		Difficulty:  "C1",
 	},
+	// --- Spanish: Easy (A1–A2) ---
+	{
+		Filename:    "bookdata/55206.txt",
+		Title:       "Fábulas",
+		Author:      "Félix María de Samaniego",
+		Description: "Classic Spanish verse fables in the tradition of Aesop — short, clear, and ideal for beginners.",
+		GutenbergID: 55206,
+		Difficulty:  "A1",
+		Lang:        "es",
+	},
+	{
+		Filename:    "bookdata/39209.txt",
+		Title:       "Platero y yo",
+		Author:      "Juan Ramón Jiménez",
+		Description: "Lyrical prose vignettes about a poet and his donkey in Andalusia. Short chapters, vivid imagery.",
+		GutenbergID: 39209,
+		Difficulty:  "A2",
+		Lang:        "es",
+	},
+	// --- Spanish: Intermediate (B1–B2) ---
+	{
+		Filename:    "bookdata/320.txt",
+		Title:       "Lazarillo de Tormes",
+		Author:      "Anonymous",
+		Description: "The original Spanish picaresque novel — the life of a poor boy serving various masters. Short and fast-paced.",
+		GutenbergID: 320,
+		Difficulty:  "B1",
+		Lang:        "es",
+	},
+	{
+		Filename:    "bookdata/29506.txt",
+		Title:       "El sombrero de tres picos",
+		Author:      "Pedro Antonio de Alarcón",
+		Description: "A comic novella of love, jealousy, and disguise in an Andalusian village. Lively 19th-century Spanish.",
+		GutenbergID: 29506,
+		Difficulty:  "B1",
+		Lang:        "es",
+	},
+	{
+		Filename:    "bookdata/17223.txt",
+		Title:       "Pepita Jiménez",
+		Author:      "Juan Valera",
+		Description: "An epistolary novel about a young seminarian who falls in love. Elegant 19th-century prose.",
+		GutenbergID: 17223,
+		Difficulty:  "B2",
+		Lang:        "es",
+	},
+	// --- Spanish: Advanced (C1) ---
+	{
+		Filename:    "bookdata/2000.txt",
+		Title:       "Don Quijote de la Mancha",
+		Author:      "Miguel de Cervantes",
+		Description: "The masterpiece of Spanish literature — the adventures of the idealistic knight-errant and his loyal squire Sancho Panza.",
+		GutenbergID: 2000,
+		Difficulty:  "C1",
+		Lang:        "es",
+	},
 }
 
 // seedBooks inserts the curated starter books into the database (idempotent).
@@ -206,7 +264,15 @@ func (db *DB) seedBooks() error {
 		chapters := gutenberg.SplitChapters(text)
 
 		gid := sb.GutenbergID
-		bookID, err := db.InsertBook(sb.Title, sb.Author, sb.Description, &gid, "seed")
+		lang := sb.Lang
+		if lang == "" {
+			lang = "fi"
+		}
+		source := "seed"
+		if lang == "es" {
+			source = "seed_es"
+		}
+		bookID, err := db.InsertBook(sb.Title, sb.Author, sb.Description, &gid, source, lang)
 		if err != nil {
 			log.Printf("seedBooks: insert book %q: %v", sb.Title, err)
 			continue

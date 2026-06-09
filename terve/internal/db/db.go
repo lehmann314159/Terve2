@@ -150,6 +150,8 @@ func (db *DB) migrate() error {
 
 	// Migration for existing DBs: add difficulty column to books if missing.
 	db.Exec(`ALTER TABLE books ADD COLUMN difficulty TEXT NOT NULL DEFAULT ''`)
+	// Migration for existing DBs: add lang column to books if missing.
+	db.Exec(`ALTER TABLE books ADD COLUMN lang TEXT NOT NULL DEFAULT 'fi'`)
 
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS quiz_results (

@@ -102,8 +102,10 @@ var (
 	reRoman = regexp.MustCompile(`(?m)^[ \t]*((?:X{0,3})(?:IX|IV|V?I{0,3}))\.?\s*$`)
 	// Numbered chapters: "1.", "2." (alone on line, at least 2 blank lines before)
 	reNumbered = regexp.MustCompile(`(?m)^[ \t]*(\d{1,3})\.[ \t]*$`)
-	// Standalone ALL-CAPS lines (min 3 chars, no lowercase)
-	reAllCaps = regexp.MustCompile(`(?m)^[ \t]*([A-ZÄÖÅÜ][A-ZÄÖÅÜ\s,.\-:!?]{2,})[ \t]*$`)
+	// Standalone ALL-CAPS lines (min 3 chars, no lowercase) — includes Spanish accented caps
+	reAllCaps = regexp.MustCompile(`(?m)^[ \t]*([A-ZÁÉÍÓÚÑÄÖÅÜ][A-ZÁÉÍÓÚÑÄÖÅÜ\s,.\-:!?]{2,})[ \t]*$`)
+	// Spanish chapter headings: "Capítulo primero.", "Capítulo II.", etc.
+	reSpanishChapter = regexp.MustCompile(`(?m)^(Cap[ií]tulo\s+\S[^\n]{0,120})$`)
 )
 
 func buildOrdinalPattern() string {
@@ -129,6 +131,11 @@ func SplitChapters(text string) []Chapter {
 
 	// Try numbered chapters
 	if chapters := splitByRegex(text, reNumbered); len(chapters) > 1 {
+		return mergeShortChapters(chapters, 200)
+	}
+
+	// Try Spanish "Capítulo" headings
+	if chapters := splitByRegex(text, reSpanishChapter); len(chapters) > 1 {
 		return mergeShortChapters(chapters, 200)
 	}
 

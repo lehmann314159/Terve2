@@ -50,14 +50,18 @@ type BookReaderData struct {
 
 // BooksPage renders the full book list page.
 func (h *Handlers) BooksPage(w http.ResponseWriter, r *http.Request) {
-	books, err := h.db.ListBooks()
+	sess := auth.GetSession(r.Context())
+	lang := "fi"
+	if sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
+	books, err := h.db.ListBooks(lang)
 	if err != nil {
 		log.Printf("list books: %v", err)
 		http.Error(w, "Failed to load books", http.StatusInternalServerError)
 		return
 	}
 
-	sess := auth.GetSession(r.Context())
 	bookmarks := make(map[int64]int64)
 	if sess != nil {
 		bookmarks = h.db.GetUserBookmarks(sess.DBUserID)
@@ -314,7 +318,11 @@ func (h *Handlers) ImportBook(w http.ResponseWriter, r *http.Request) {
 	text = gutenberg.StripBoilerplate(text)
 	chapters := gutenberg.SplitChapters(text)
 
-	bookID, err := h.db.InsertBook(title, author, "", &gutenbergID, "gutenberg")
+	importLang := "fi"
+	if importSess := auth.GetSession(r.Context()); importSess != nil && importSess.Language != "" {
+		importLang = importSess.Language
+	}
+	bookID, err := h.db.InsertBook(title, author, "", &gutenbergID, "gutenberg", importLang)
 	if err != nil {
 		log.Printf("insert imported book: %v", err)
 		h.renderPartial(w, "import-result", map[string]any{"Error": "Failed to save book."})

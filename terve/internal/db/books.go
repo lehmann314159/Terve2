@@ -15,6 +15,7 @@ type Book struct {
 	GutenbergID  *int
 	Source       string
 	Difficulty   string
+	Lang         string
 	CreatedAt    time.Time
 	ChapterCount int // populated by list queries
 }
@@ -39,20 +40,23 @@ type UserBookmark struct {
 }
 
 // InsertBook inserts a book. If a gutenberg_id conflict exists, returns the existing ID.
-func (db *DB) InsertBook(title, author, description string, gutenbergID *int, source string) (int64, error) {
+func (db *DB) InsertBook(title, author, description string, gutenbergID *int, source, lang string) (int64, error) {
+	if lang == "" {
+		lang = "fi"
+	}
 	var res sql.Result
 	var err error
 	if gutenbergID != nil {
 		res, err = db.Exec(`
-			INSERT INTO books (title, author, description, gutenberg_id, source)
-			VALUES (?, ?, ?, ?, ?)
+			INSERT INTO books (title, author, description, gutenberg_id, source, lang)
+			VALUES (?, ?, ?, ?, ?, ?)
 			ON CONFLICT(gutenberg_id) DO NOTHING
-		`, title, author, description, *gutenbergID, source)
+		`, title, author, description, *gutenbergID, source, lang)
 	} else {
 		res, err = db.Exec(`
-			INSERT INTO books (title, author, description, source)
-			VALUES (?, ?, ?, ?)
-		`, title, author, description, source)
+			INSERT INTO books (title, author, description, source, lang)
+			VALUES (?, ?, ?, ?, ?)
+		`, title, author, description, source, lang)
 	}
 	if err != nil {
 		return 0, err
@@ -88,14 +92,18 @@ func (db *DB) InsertChapter(bookID int64, chapterNumber int, title, content stri
 	return id, err
 }
 
-// ListBooks returns all books with chapter counts.
-func (db *DB) ListBooks() ([]Book, error) {
+// ListBooks returns books for the given language with chapter counts.
+func (db *DB) ListBooks(lang string) ([]Book, error) {
+	if lang == "" {
+		lang = "fi"
+	}
 	rows, err := db.Query(`
-		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.created_at,
+		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.lang, b.created_at,
 		       (SELECT COUNT(*) FROM book_chapters bc WHERE bc.book_id = b.id) AS chapter_count
 		FROM books b
+		WHERE b.lang = ?
 		ORDER BY b.title ASC
-	`)
+	`, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +113,7 @@ func (db *DB) ListBooks() ([]Book, error) {
 	for rows.Next() {
 		var b Book
 		var gid sql.NullInt64
-		if err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.CreatedAt, &b.ChapterCount); err != nil {
+		if err := rows.Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.Lang, &b.CreatedAt, &b.ChapterCount); err != nil {
 			return nil, err
 		}
 		if gid.Valid {
@@ -128,10 +136,10 @@ func (db *DB) GetBook(bookID int64) (*Book, error) {
 	var b Book
 	var gid sql.NullInt64
 	err := db.QueryRow(`
-		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.created_at,
+		SELECT b.id, b.title, b.author, b.description, b.gutenberg_id, b.source, b.difficulty, b.lang, b.created_at,
 		       (SELECT COUNT(*) FROM book_chapters bc WHERE bc.book_id = b.id) AS chapter_count
 		FROM books b WHERE b.id = ?
-	`, bookID).Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.CreatedAt, &b.ChapterCount)
+	`, bookID).Scan(&b.ID, &b.Title, &b.Author, &b.Description, &gid, &b.Source, &b.Difficulty, &b.Lang, &b.CreatedAt, &b.ChapterCount)
 	if err != nil {
 		return nil, err
 	}
