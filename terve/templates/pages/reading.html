@@ -1,6 +1,7 @@
 {{define "read-content"}}
 <div class="reading-layout">
     <div class="text-panel">
+        {{if eq .Language "fi"}}
         <div class="text-controls">
             <button class="btn" hx-get="/articles" hx-target="#article-select" hx-indicator="#articles-loading">
                 Load Articles
@@ -8,9 +9,18 @@
             <span id="article-select"></span>
             <span id="articles-loading" class="htmx-indicator">Loading...</span>
         </div>
+        {{else}}
+        <div class="text-controls">
+            <p class="lang-note">Paste Spanish text below, then click Load to begin reading.</p>
+        </div>
+        <form hx-post="/load-text" hx-target="#article-body">
+            <textarea name="text" class="paste-input" rows="8" placeholder="Paste Spanish text here..."></textarea>
+            <button type="submit" class="btn">Load Text</button>
+        </form>
+        {{end}}
 
         <div id="article-body" class="article-body">
-            <p class="placeholder-text">Load articles and select one to begin reading.</p>
+            <p class="placeholder-text">{{if eq .Language "fi"}}Load articles and select one to begin reading.{{else}}Paste text above and click Load to begin reading.{{end}}</p>
         </div>
     </div>
 

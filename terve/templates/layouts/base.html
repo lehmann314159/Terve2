@@ -16,9 +16,13 @@
             <li><a href="/read" class="{{if eq .ActivePage "read"}}active{{end}}">Read</a></li>
             <li><a href="/books" class="{{if or (eq .ActivePage "books") (eq .ActivePage "book-reader")}}active{{end}}">Books</a></li>
             {{if .User}}<li><a href="/flashcards" class="{{if eq .ActivePage "flashcards"}}active{{end}}">Flashcards</a></li>{{end}}
-            {{if .User}}<li><a href="/quiz" class="{{if or (eq .ActivePage "quiz") (eq .ActivePage "quiz-session")}}active{{end}}">Quiz</a></li>{{end}}
+            {{if and .User (eq .Language "fi")}}<li><a href="/quiz" class="{{if or (eq .ActivePage "quiz") (eq .ActivePage "quiz-session")}}active{{end}}">Quiz</a></li>{{end}}
         </ul>
         <div class="nav-auth">
+            <form method="POST" action="/language" class="nav-lang-form">
+                <button type="submit" name="lang" value="fi" class="nav-lang-btn{{if eq .Language "fi"}} active{{end}}">FI</button>
+                <button type="submit" name="lang" value="es" class="nav-lang-btn{{if eq .Language "es"}} active{{end}}">ES</button>
+            </form>
             {{if .User}}
                 <div class="nav-user">
                     {{if .User.AvatarURL}}<img class="nav-avatar" src="{{.User.AvatarURL}}" alt="">{{end}}
@@ -38,7 +42,7 @@
     </main>
 
     <footer class="footer">
-        <p>Terve &mdash; Finnish Reading Comprehension</p>
+        <p>Terve &mdash; Language Reading Comprehension</p>
     </footer>
 
     {{if or (eq .ActivePage "read") (eq .ActivePage "book-reader")}}<script src="/static/js/selection.js"></script>{{end}}

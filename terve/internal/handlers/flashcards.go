@@ -4,11 +4,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/db"
-	"github.com/lehmann314159/terve2/internal/ollama"
+	"github.com/lehmann314159/terve2/internal/language"
 )
 
 // FlashcardsPageData is passed to the flashcards page template.
@@ -24,9 +25,11 @@ type FlashcardsPageData struct {
 func (h *Handlers) FlashcardsPage(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
 
-	// Auto-enroll in seed cards on first visit
-	if err := h.db.EnrollUserInSeedCards(sess.DBUserID); err != nil {
-		log.Printf("enroll seed cards: %v", err)
+	// Auto-enroll in Finnish seed cards on first visit (Finnish mode only).
+	if sess.Language == "" || sess.Language == "fi" {
+		if err := h.db.EnrollUserInSeedCards(sess.DBUserID); err != nil {
+			log.Printf("enroll seed cards: %v", err)
+		}
 	}
 
 	filter := r.URL.Query().Get("filter")
@@ -83,12 +86,12 @@ func (h *Handlers) FlashcardList(w http.ResponseWriter, r *http.Request) {
 const maxFieldLen = 1000
 
 // validateCardFields checks that required fields are present and within length limits.
-func validateCardFields(finnish string, fields ...string) string {
-	if finnish == "" {
-		return "Finnish word is required."
+func validateCardFields(word string, fields ...string) string {
+	if word == "" {
+		return "Word is required."
 	}
-	if len(finnish) > maxFieldLen {
-		return "Finnish word is too long."
+	if len(word) > maxFieldLen {
+		return "Word is too long."
 	}
 	for _, f := range fields {
 		if len(f) > maxFieldLen {
@@ -224,7 +227,7 @@ func (h *Handlers) RemoveWordCard(w http.ResponseWriter, r *http.Request) {
 
 // ValidateFlashcardData is the preview data for manual add.
 type ValidateFlashcardData struct {
-	Finnish     string
+	Word        string
 	Lemma       string
 	WordClass   string
 	Morphology  string
@@ -233,58 +236,55 @@ type ValidateFlashcardData struct {
 	AlreadySaved bool
 }
 
-// ValidateFlashcard previews a manually entered word via Voikko + Ollama.
+// ValidateFlashcard previews a manually entered word via the language driver + Ollama.
 func (h *Handlers) ValidateFlashcard(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
-	finnish := r.FormValue("finnish")
+	word := r.FormValue("finnish")
 
-	if finnish == "" {
-		h.renderPartial(w, "validate-result", ValidateFlashcardData{Error: "Please enter a Finnish word."})
+	if word == "" {
+		h.renderPartial(w, "validate-result", ValidateFlashcardData{Error: "Please enter a word."})
 		return
 	}
 
 	// Check if already saved
-	alreadySaved := h.db.UserHasCard(sess.DBUserID, finnish, finnish)
+	alreadySaved := h.db.UserHasCard(sess.DBUserID, word, word)
 
-	// Get morphology from Voikko
+	// Get morphology from the language driver
+	drv := h.driverFor(r)
 	var lemma, wordClass, morphology string
-	analyses, err := h.voikko.AnalyzeWord(finnish)
+	result, err := drv.Analyze(word)
 	if err != nil {
-		log.Printf("voikko analyze for flashcard: %v", err)
-	} else if len(analyses) > 0 {
-		a := analyses[0]
-		lemma = a.Lemma
-		wordClass = a.WordClass
-		if a.Case != "" {
-			morphology = a.Case
+		log.Printf("driver analyze for flashcard: %v", err)
+	} else if result != nil && len(result.Tokens) > 0 {
+		tok := result.Tokens[0]
+		lemma = tok.Lemma
+		wordClass = tok.POS
+		if len(tok.Features) > 0 {
+			morphology = strings.Join(tok.Features, ", ")
 		}
-		if a.Number != "" {
-			if morphology != "" {
-				morphology += ", "
-			}
-			morphology += a.Number
-		}
-		// Check with the lemma too
 		if !alreadySaved {
-			alreadySaved = h.db.UserHasCard(sess.DBUserID, lemma, finnish)
+			alreadySaved = h.db.UserHasCard(sess.DBUserID, lemma, word)
 		}
 	}
 	if lemma == "" {
-		lemma = finnish
+		lemma = word
 	}
 
-	// Get translation from Ollama
+	// Get translation from Ollama via the driver's prompt builder
 	var translation string
-	prompt := ollama.BuildPrompt(finnish, "", nil)
-	resp, err := h.ollama.Generate(ollama.SystemPrompt, prompt)
+	if result == nil {
+		result = &language.AnalysisResult{}
+	}
+	prompt := drv.BuildPrompt(word, "", result)
+	resp, err := h.ollama.Generate(drv.SystemPrompt(), prompt)
 	if err != nil {
 		log.Printf("ollama for flashcard validate: %v", err)
 	} else {
-		translation, _ = ollama.ParseResponse(resp)
+		translation, _ = drv.ParseResponse(resp)
 	}
 
 	h.renderPartial(w, "validate-result", ValidateFlashcardData{
-		Finnish:      finnish,
+		Word:         word,
 		Lemma:        lemma,
 		WordClass:    wordClass,
 		Morphology:   morphology,

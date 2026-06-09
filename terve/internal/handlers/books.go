@@ -127,8 +127,12 @@ func (h *Handlers) BookReader(w http.ResponseWriter, r *http.Request) {
 		chapterNum = currentChapter.ChapterNumber
 	}
 
-	// Split into paragraphs and tokenize each
-	paragraphs, plainParagraphs := h.tokenizeParagraphs(currentChapter.Content)
+	// Split into paragraphs and tokenize each (Finnish only).
+	lang := "fi"
+	if sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
+	paragraphs, plainParagraphs := h.tokenizeParagraphs(currentChapter.Content, lang)
 
 	h.render(w, "base", BookReaderData{
 		PageData:          pageData(r, fmt.Sprintf("Terve — %s", book.Title), "book-reader"),
@@ -178,7 +182,11 @@ func (h *Handlers) BookChapter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	paragraphs, plainParagraphs := h.tokenizeParagraphs(chapter.Content)
+	lang := "fi"
+	if sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
+	paragraphs, plainParagraphs := h.tokenizeParagraphs(chapter.Content, lang)
 
 	// Direct browser request: render full reader page
 	if r.Header.Get("HX-Request") == "" {
@@ -259,7 +267,12 @@ func (h *Handlers) SearchGutenberg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := gutenberg.Search(query)
+	lang := "fi"
+	if sess := auth.GetSession(r.Context()); sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
+
+	results, err := gutenberg.Search(query, lang)
 	if err != nil {
 		log.Printf("gutenberg search: %v", err)
 		h.renderPartial(w, "gutenberg-results", map[string]any{"Error": "Search failed. Please try again."})
@@ -353,10 +366,9 @@ func (h *Handlers) tokenizeText(text string) ([]voikko.TokenAnalysis, string) {
 	return sv.Tokens, text
 }
 
-// tokenizeParagraphs splits text on double newlines first, then tokenizes
-// each paragraph individually via Voikko. This avoids relying on Voikko's
-// tokenizer to preserve paragraph boundaries.
-func (h *Handlers) tokenizeParagraphs(text string) ([]Paragraph, []PlainParagraph) {
+// tokenizeParagraphs splits text on double newlines and tokenizes via Voikko
+// for Finnish. For other languages it returns only plain paragraphs.
+func (h *Handlers) tokenizeParagraphs(text, lang string) ([]Paragraph, []PlainParagraph) {
 	// Normalize Windows line endings (Gutenberg texts use \r\n).
 	text = strings.ReplaceAll(text, "\r", "")
 	parts := strings.Split(text, "\n\n")
@@ -373,9 +385,11 @@ func (h *Handlers) tokenizeParagraphs(text string) ([]Paragraph, []PlainParagrap
 		p = strings.ReplaceAll(p, "\n", " ")
 		plainParagraphs = append(plainParagraphs, PlainParagraph{Number: num, Text: p})
 
-		tokens, _ := h.tokenizeText(p)
-		if len(tokens) > 0 {
-			paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: tokens})
+		if lang == "fi" {
+			tokens, _ := h.tokenizeText(p)
+			if len(tokens) > 0 {
+				paragraphs = append(paragraphs, Paragraph{Number: num, Tokens: tokens})
+			}
 		}
 		num++
 	}

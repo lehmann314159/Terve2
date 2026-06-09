@@ -2,14 +2,15 @@
 <div class="books-page">
     <div class="books-header">
         <h1>Books</h1>
-        <p class="books-subtitle">Read Finnish literature from Project Gutenberg</p>
+        <p class="books-subtitle">Read {{if eq .Language "es"}}Spanish{{else}}Finnish{{end}} literature from Project Gutenberg</p>
     </div>
 
     {{if .User}}
     <div class="gutenberg-search">
         <h3>Import from Project Gutenberg</h3>
         <div class="search-form">
-            <input type="text" id="gutenberg-query" class="fc-input" placeholder="Search Finnish books..."
+            <input type="text" id="gutenberg-query" class="fc-input"
+                   placeholder="Search {{if eq .Language "es"}}Spanish{{else}}Finnish{{end}} books..."
                    hx-get="/books/search" hx-trigger="keyup changed delay:500ms" hx-target="#search-results"
                    hx-indicator="#search-loading" name="q">
             <span id="search-loading" class="htmx-indicator">Searching...</span>
@@ -200,7 +201,7 @@
     {{end}}
 </div>
 {{else}}
-<p class="placeholder-text">No Finnish books found for "{{.Query}}".</p>
+<p class="placeholder-text">No books found for "{{.Query}}".</p>
 {{end}}
 {{end}}
 

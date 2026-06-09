@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/lehmann314159/terve2/internal/auth"
 	"github.com/lehmann314159/terve2/internal/rss"
 )
 
@@ -85,12 +86,21 @@ func (h *Handlers) ShowArticle(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// LoadCustomText tokenizes user-pasted text.
+// LoadCustomText tokenizes user-pasted text (Finnish) or renders it as plain text (other languages).
 func (h *Handlers) LoadCustomText(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("text")
 	if text == "" {
 		h.renderPartial(w, "article-text", map[string]any{
 			"Error": "No text provided.",
+		})
+		return
+	}
+
+	// Non-Finnish languages: skip Voikko tokenisation, render as selectable plain text.
+	sess := auth.GetSession(r.Context())
+	if sess != nil && sess.Language != "" && sess.Language != "fi" {
+		h.renderPartial(w, "article-text", map[string]any{
+			"PlainText": text,
 		})
 		return
 	}

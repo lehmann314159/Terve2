@@ -18,7 +18,7 @@
 
         <div class="fc-add-form">
             <input type="text" name="finnish" id="fc-add-input"
-                   placeholder="Add a Finnish word..."
+                   placeholder="Add a word..."
                    class="fc-input">
             <button class="btn"
                     hx-post="/flashcards/validate"
@@ -58,7 +58,7 @@
 <table class="fc-table">
     <thead>
         <tr>
-            <th>Finnish</th>
+            <th>Word</th>
             <th>Lemma</th>
             <th>Class</th>
             <th>Translation</th>
@@ -167,7 +167,7 @@
 <div class="fc-validate-preview">
     <h3>Preview</h3>
     <table class="morph-table">
-        <tr><th>Word</th><td>{{.Finnish}}</td></tr>
+        <tr><th>Word</th><td>{{.Word}}</td></tr>
         <tr><th>Lemma</th><td>{{.Lemma}}</td></tr>
         {{if .WordClass}}<tr><th>Class</th><td>{{.WordClass}}</td></tr>{{end}}
         {{if .Morphology}}<tr><th>Morphology</th><td>{{.Morphology}}</td></tr>{{end}}
@@ -177,7 +177,7 @@
     <p class="fc-already-saved">You already have this card.</p>
     {{else}}
     <form hx-post="/flashcards/add" hx-target="#card-list" hx-swap="innerHTML">
-        <input type="hidden" name="finnish" value="{{.Finnish}}">
+        <input type="hidden" name="finnish" value="{{.Word}}">
         <input type="hidden" name="lemma" value="{{.Lemma}}">
         <input type="hidden" name="word_class" value="{{.WordClass}}">
         <input type="hidden" name="morphology" value="{{.Morphology}}">

@@ -33,7 +33,7 @@ type Server struct {
 }
 
 // New creates a new server instance.
-func New(port string, driver language.Driver, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) (*Server, error) {
+func New(port string, drivers map[string]language.Driver, voikkoURL, ollamaURL, ollamaModel, dbPath string, authCfg auth.AuthConfig, sessionSecret, sessionEncryptKey string) (*Server, error) {
 	s := &Server{
 		port:   port,
 		router: chi.NewRouter(),
@@ -58,7 +58,7 @@ func New(port string, driver language.Driver, voikkoURL, ollamaURL, ollamaModel,
 
 	vc := voikko.NewClient(voikkoURL)
 	oc := ollama.NewClient(ollamaURL, ollamaModel)
-	s.handlers = handlers.New(s.templates, driver, vc, oc, database)
+	s.handlers = handlers.New(s.templates, drivers, cookieStore, vc, oc, database)
 	s.authHandlers = auth.NewAuthHandlers(authCfg, cookieStore, stateSC, s.templates, database)
 
 	// Middleware

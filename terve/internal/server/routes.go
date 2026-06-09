@@ -23,6 +23,9 @@ func (s *Server) setupRoutes() {
 	s.router.Get("/auth/{provider}/callback", s.authHandlers.Callback)
 	s.router.Post("/auth/logout", s.authHandlers.Logout)
 
+	// Language switcher
+	s.router.Post("/language", s.handlers.SetLanguage)
+
 	// HTMX partials
 	s.router.Get("/articles", s.handlers.ListArticles)
 	s.router.Get("/article/{id}", s.handlers.ShowArticle)

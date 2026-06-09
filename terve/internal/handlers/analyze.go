@@ -46,7 +46,7 @@ func (h *Handlers) Analyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.driver.Analyze(text)
+	result, err := h.driverFor(r).Analyze(text)
 	if err != nil {
 		log.Printf("Driver analyze error: %v", err)
 		h.renderPartial(w, "analysis", AnalysisData{
@@ -93,13 +93,14 @@ func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Re-run driver to get tokens for the prompt (instant)
-	result, _ := h.driver.Analyze(text)
+	drv := h.driverFor(r)
+	result, _ := drv.Analyze(text)
 	if result == nil {
 		result = &language.AnalysisResult{}
 	}
 
-	prompt := h.driver.BuildPrompt(text, context, result)
-	response, err := h.ollama.Generate(h.driver.SystemPrompt(), prompt)
+	prompt := drv.BuildPrompt(text, context, result)
+	response, err := h.ollama.Generate(drv.SystemPrompt(), prompt)
 	if err != nil {
 		log.Printf("Ollama error: %v", err)
 		h.renderPartial(w, "explanation", ExplainData{
@@ -108,7 +109,7 @@ func (h *Handlers) Explain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	translation, explanation := h.driver.ParseResponse(response)
+	translation, explanation := drv.ParseResponse(response)
 
 	// Gather data for the save-as-flashcard button
 	sess := auth.GetSession(r.Context())

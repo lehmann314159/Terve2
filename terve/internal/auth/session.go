@@ -22,6 +22,7 @@ type Session struct {
 	Email     string
 	AvatarURL string
 	Provider  string // "google" or "github"
+	Language  string // "fi" or "es"; defaults to "fi"
 	ExpiresAt time.Time
 }
 

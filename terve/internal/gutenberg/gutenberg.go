@@ -326,8 +326,11 @@ func splitByAllCaps(text string) []Chapter {
 }
 
 // Search queries the Gutendex API for Finnish books matching the query string.
-func Search(query string) ([]SearchResult, error) {
-	url := fmt.Sprintf("https://gutendex.com/books/?languages=fi&search=%s", query)
+func Search(query, lang string) ([]SearchResult, error) {
+	if lang == "" {
+		lang = "fi"
+	}
+	url := fmt.Sprintf("https://gutendex.com/books/?languages=%s&search=%s", lang, query)
 	resp, err := httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("gutendex search: %w", err)

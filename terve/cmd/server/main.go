@@ -22,18 +22,12 @@ func main() {
 	ollamaModel := envOr("OLLAMA_MODEL", "qwen2.5:32b-instruct-q4_K_M")
 	dbPath := envOr("DB_PATH", "./data/terve.db")
 
-	lang := envOr("LANGUAGE", "fi")
-	var driver language.Driver
-	switch lang {
-	case "fi":
-		driver = finnish.New(voikkoURL)
-	case "es":
-		spanishURL := envOr("SPANISH_URL", "http://localhost:8001")
-		driver = spanish.New(spanishURL)
-	default:
-		log.Fatalf("Unknown LANGUAGE %q — supported: fi, es", lang)
+	spanishURL := envOr("SPANISH_URL", "http://localhost:8001")
+	drivers := map[string]language.Driver{
+		"fi": finnish.New(voikkoURL),
+		"es": spanish.New(spanishURL),
 	}
-	log.Printf("Language driver: %s", driver.Language())
+	log.Printf("Language drivers loaded: fi, es")
 
 	authCfg := auth.AuthConfig{
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -46,7 +40,7 @@ func main() {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	sessionEncryptKey := os.Getenv("SESSION_ENCRYPT_KEY")
 
-	srv, err := server.New(port, driver, voikkoURL, ollamaURL, ollamaModel, dbPath, authCfg, sessionSecret, sessionEncryptKey)
+	srv, err := server.New(port, drivers, voikkoURL, ollamaURL, ollamaModel, dbPath, authCfg, sessionSecret, sessionEncryptKey)
 	if err != nil {
 		log.Fatalf("Server init failed: %v", err)
 	}

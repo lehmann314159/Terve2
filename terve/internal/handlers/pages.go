@@ -11,16 +11,23 @@ type PageData struct {
 	Title         string
 	ActivePage    string
 	User          *auth.Session
+	Language      string // "fi" or "es"
 	GoogleEnabled bool
 	GitHubEnabled bool
 }
 
 // pageData creates a PageData with the session from the request context.
 func pageData(r *http.Request, title, activePage string) PageData {
+	sess := auth.GetSession(r.Context())
+	lang := "fi"
+	if sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
 	return PageData{
 		Title:      title,
 		ActivePage: activePage,
-		User:       auth.GetSession(r.Context()),
+		User:       sess,
+		Language:   lang,
 	}
 }
 
