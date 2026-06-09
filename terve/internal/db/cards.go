@@ -119,13 +119,25 @@ func (db *DB) ToggleFocus(ucID, userID int64) error {
 	return err
 }
 
-// EnrollUserInSeedCards creates user_card rows for all seed cards the user
+// EnrollUserInSeedCards creates user_card rows for all Finnish seed cards the user
 // doesn't already have.
 func (db *DB) EnrollUserInSeedCards(userID int64) error {
 	_, err := db.Exec(`
 		INSERT INTO user_cards (user_id, card_id)
 		SELECT ?, c.id FROM cards c
 		WHERE c.source = 'seed'
+		AND c.id NOT IN (SELECT card_id FROM user_cards WHERE user_id = ?)
+	`, userID, userID)
+	return err
+}
+
+// EnrollUserInSpanishSeedCards creates user_card rows for all Spanish seed cards
+// the user doesn't already have.
+func (db *DB) EnrollUserInSpanishSeedCards(userID int64) error {
+	_, err := db.Exec(`
+		INSERT INTO user_cards (user_id, card_id)
+		SELECT ?, c.id FROM cards c
+		WHERE c.source = 'seed_es'
 		AND c.id NOT IN (SELECT card_id FROM user_cards WHERE user_id = ?)
 	`, userID, userID)
 	return err

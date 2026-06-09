@@ -25,8 +25,13 @@ type FlashcardsPageData struct {
 func (h *Handlers) FlashcardsPage(w http.ResponseWriter, r *http.Request) {
 	sess := auth.GetSession(r.Context())
 
-	// Auto-enroll in Finnish seed cards on first visit (Finnish mode only).
-	if sess.Language == "" || sess.Language == "fi" {
+	// Auto-enroll in language-appropriate seed cards on first visit.
+	switch sess.Language {
+	case "es":
+		if err := h.db.EnrollUserInSpanishSeedCards(sess.DBUserID); err != nil {
+			log.Printf("enroll Spanish seed cards: %v", err)
+		}
+	default: // "fi" or unset
 		if err := h.db.EnrollUserInSeedCards(sess.DBUserID); err != nil {
 			log.Printf("enroll seed cards: %v", err)
 		}

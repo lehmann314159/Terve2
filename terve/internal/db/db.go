@@ -202,5 +202,8 @@ func (db *DB) migrate() error {
 	if err := db.seedCards(); err != nil {
 		return err
 	}
+	if err := db.seedSpanishCards(); err != nil {
+		return err
+	}
 	return db.seedBooks()
 }
