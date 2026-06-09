@@ -76,16 +76,23 @@ func NewAuthHandlers(cfg AuthConfig, store *CookieStore, stateSC *securecookie.S
 
 // LoginPage renders the login page with available providers.
 func (ah *AuthHandlers) LoginPage(w http.ResponseWriter, r *http.Request) {
+	sess := GetSession(r.Context())
+	lang := "fi"
+	if sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
 	data := struct {
 		Title         string
 		ActivePage    string
 		User          *Session
+		Language      string
 		GoogleEnabled bool
 		GitHubEnabled bool
 	}{
 		Title:         "Terve — Sign In",
 		ActivePage:    "login",
-		User:          GetSession(r.Context()),
+		User:          sess,
+		Language:      lang,
 		GoogleEnabled: ah.providers["google"] != nil,
 		GitHubEnabled: ah.providers["github"] != nil,
 	}
