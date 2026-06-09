@@ -16,18 +16,81 @@ nlp = spacy.load("es_core_news_lg")
 # Enclitic decomposer
 # ---------------------------------------------------------------------------
 
+# Object/reflexive clitics that fuse to verbs in Spanish.
+# Ordered longest-first so "melo" is tried before "me" and "lo".
+_CLITIC_PATTERNS = [
+    ("selos", ["se", "los"]),
+    ("selas", ["se", "las"]),
+    ("melos", ["me", "los"]),
+    ("melas", ["me", "las"]),
+    ("noslo", ["nos", "lo"]),
+    ("nosla", ["nos", "la"]),
+    ("melo",  ["me", "lo"]),
+    ("mela",  ["me", "la"]),
+    ("telo",  ["te", "lo"]),
+    ("tela",  ["te", "la"]),
+    ("selo",  ["se", "lo"]),
+    ("sela",  ["se", "la"]),
+    ("nos",   ["nos"]),
+    ("les",   ["les"]),
+    ("los",   ["los"]),
+    ("las",   ["las"]),
+    ("me",    ["me"]),
+    ("te",    ["te"]),
+    ("se",    ["se"]),
+    ("le",    ["le"]),
+    ("lo",    ["lo"]),
+    ("la",    ["la"]),
+    ("os",    ["os"]),
+]
+
+# Minimum characters left after stripping clitics (avoids "ha" → "h" + ["a"]).
+_MIN_BASE = 2
+
+
+def _suffix_strip(word):
+    """
+    Try stripping a known clitic suffix from *word* (lowercased).
+    Returns (base, [clitics]) or None.
+    """
+    w = word.lower()
+    for suffix, clitics in _CLITIC_PATTERNS:
+        if w.endswith(suffix) and len(w) - len(suffix) >= _MIN_BASE:
+            base = w[:-len(suffix)]
+            return base, clitics
+    return None
+
 
 def _decompose_enclitic(token):
     """
-    Detect a fused verb+clitic token via spaCy's space-in-lemma signal.
-    e.g. "dímelo" → lemma "decir me lo" → base verb "decir", clitics ["me", "lo"]
+    Detect a fused verb+clitic token and return (base_lemma, [clitics]).
+    Returns None if the token is not a fusion.
 
-    Returns (base_verb_lemma, [clitic, ...]) or None if not a fusion.
+    Strategy 1 — spaCy space-in-lemma signal (reliable for words in the model):
+        "dímelo" → lemma "decir me lo" → ("decir", ["me", "lo"])
+
+    Strategy 2 — suffix stripping fallback (catches words the model doesn't know):
+        "dimelo" → strip "melo" → base "di" → re-lemmatise via spaCy
+        Activated only for VERB tokens where spaCy gave no space-in-lemma.
     """
-    if " " not in token.lemma_:
+    # Strategy 1
+    if " " in token.lemma_:
+        parts = token.lemma_.split()
+        return parts[0], parts[1:]
+
+    # Strategy 2 — only for verbs
+    if token.pos_ != "VERB":
         return None
-    parts = token.lemma_.split()
-    return parts[0], parts[1:]
+
+    result = _suffix_strip(token.text)
+    if result is None:
+        return None
+
+    base, clitics = result
+    # Re-run spaCy on the isolated base to get a proper lemma.
+    base_doc = nlp(base)
+    base_lemma = base_doc[0].lemma_ if base_doc else base
+    return base_lemma, clitics
 
 
 # ---------------------------------------------------------------------------
