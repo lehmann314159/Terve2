@@ -11,11 +11,21 @@ import (
 	"golang.org/x/net/html"
 )
 
-const feedURL = "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_SELKOUUTISET"
+// feedsByLang lists RSS feed URLs per language code.
+// Multiple feeds are fetched and merged (duplicates by link dropped).
+var feedsByLang = map[string][]string{
+	"fi": {
+		"https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_SELKOUUTISET",
+	},
+	"es": {
+		"https://feeds.bbci.co.uk/mundo/rss.xml",
+		"https://rss.dw.com/xml/rss-es-all",
+	},
+}
 
 // Article represents a scraped article.
 type Article struct {
-	ID    string // index in the feed
+	ID    string // index in the merged list
 	Title string
 	Link  string
 	Desc  string
@@ -40,27 +50,60 @@ type rssItem struct {
 
 var client = &http.Client{Timeout: 10 * time.Second}
 
-// FetchFeed fetches the YLE Selkosuomi RSS feed and returns article metadata.
-func FetchFeed() ([]Article, error) {
-	resp, err := client.Get(feedURL)
+// FetchFeed fetches RSS feeds for the given language code and returns merged
+// article metadata. Unknown languages fall back to Finnish.
+func FetchFeed(lang string) ([]Article, error) {
+	urls, ok := feedsByLang[lang]
+	if !ok {
+		urls = feedsByLang["fi"]
+	}
+
+	seen := map[string]bool{}
+	var articles []Article
+
+	for _, url := range urls {
+		items, err := fetchOne(url)
+		if err != nil {
+			// Log and continue — partial results are better than none.
+			fmt.Printf("rss: skipping feed %s: %v\n", url, err)
+			continue
+		}
+		for _, item := range items {
+			if seen[item.Link] {
+				continue
+			}
+			seen[item.Link] = true
+			item.ID = fmt.Sprintf("%d", len(articles))
+			articles = append(articles, item)
+		}
+	}
+
+	if len(articles) == 0 {
+		return nil, fmt.Errorf("rss: no articles fetched for lang %q", lang)
+	}
+	return articles, nil
+}
+
+// fetchOne fetches and parses a single RSS feed URL.
+func fetchOne(url string) ([]Article, error) {
+	resp, err := client.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("rss: fetch feed: %w", err)
+		return nil, fmt.Errorf("fetch feed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("rss: feed returned %d", resp.StatusCode)
+		return nil, fmt.Errorf("feed returned %d", resp.StatusCode)
 	}
 
 	var feed rssFeed
 	if err := xml.NewDecoder(resp.Body).Decode(&feed); err != nil {
-		return nil, fmt.Errorf("rss: parse feed: %w", err)
+		return nil, fmt.Errorf("parse feed: %w", err)
 	}
 
 	articles := make([]Article, 0, len(feed.Channel.Items))
-	for i, item := range feed.Channel.Items {
+	for _, item := range feed.Channel.Items {
 		articles = append(articles, Article{
-			ID:    fmt.Sprintf("%d", i),
 			Title: item.Title,
 			Link:  item.Link,
 			Desc:  item.Desc,

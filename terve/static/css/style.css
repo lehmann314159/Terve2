@@ -263,6 +263,13 @@ body {
     padding-top: 1.5rem;
     border-top: 1px solid var(--border);
 }
+.paste-area summary {
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    user-select: none;
+}
 .paste-area textarea {
     width: 100%;
     padding: 0.8rem;

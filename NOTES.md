@@ -99,8 +99,8 @@ At 32B parameters, quantization level does not meaningfully affect linguistic kn
 
 #### Read
 - [ ] **Paste-your-own-text smoke test**: verify end-to-end in Spanish — select text → analysis panel → AI explanation. Should work already via the driver, but not confirmed.
-- [ ] **Spanish article source**: the RSS feed (`articles.go`) is hardcoded to YLE Selkosuomi (Finnish). Options: (a) find an equivalent simplified-Spanish RSS feed and wire it in when `lang=es`, or (b) hide the RSS panel for ES users and rely on paste-text + books (simpler, acceptable short-term).
-- [ ] **Reading page subtitle/hint text**: currently says "load Finnish articles from YLE..." — make it language-aware or generic.
+- [x] **Spanish article source**: `FetchFeed(lang)` fetches BBC Mundo + DW Español for ES; YLE Selkosuomi for FI. Multiple feeds merged with dedup. Verify feed URLs work in production.
+- [x] **Reading page**: unified layout for all languages — Load Articles button always shown; paste-text moved into a collapsible `<details>` section. `ShowArticle` uses PlainText for non-Finnish (skips Voikko tokenization).
 
 #### Quiz
 - [x] **Quiz hub subtitle**: language-aware ("Finnish" / "Spanish").

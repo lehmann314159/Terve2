@@ -17,9 +17,15 @@ var articleCache struct {
 	articles []rss.Article
 }
 
-// ListArticles fetches the RSS feed and renders the article list partial.
+// ListArticles fetches the RSS feed for the session's language and renders
+// the article list partial.
 func (h *Handlers) ListArticles(w http.ResponseWriter, r *http.Request) {
-	articles, err := rss.FetchFeed()
+	lang := "fi"
+	if sess := auth.GetSession(r.Context()); sess != nil && sess.Language != "" {
+		lang = sess.Language
+	}
+
+	articles, err := rss.FetchFeed(lang)
 	if err != nil {
 		log.Printf("RSS fetch error: %v", err)
 		h.renderPartial(w, "article-list", map[string]any{
@@ -68,11 +74,20 @@ func (h *Handlers) ShowArticle(w http.ResponseWriter, r *http.Request) {
 		text = article.Desc
 	}
 
-	// Tokenize via Voikko
+	// Finnish: tokenize via Voikko for per-word spans.
+	// Other languages: render as plain text (selection.js handles mouseup).
+	sess := auth.GetSession(r.Context())
+	if sess != nil && sess.Language != "" && sess.Language != "fi" {
+		h.renderPartial(w, "article-text", map[string]any{
+			"Title":     article.Title,
+			"PlainText": text,
+		})
+		return
+	}
+
 	sv, err := h.voikko.ValidateSentence(text)
 	if err != nil {
 		log.Printf("Voikko tokenize error: %v", err)
-		// Render plain text as fallback
 		h.renderPartial(w, "article-text", map[string]any{
 			"Title":     article.Title,
 			"PlainText": text,
