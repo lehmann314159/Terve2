@@ -19,7 +19,6 @@ var feedsByLang = map[string][]string{
 	},
 	"es": {
 		"https://feeds.bbci.co.uk/mundo/rss.xml",
-		"https://rss.dw.com/xml/rss-es-all",
 	},
 }
 
