@@ -33,7 +33,7 @@ func pageData(r *http.Request, title, activePage string) PageData {
 
 // Home renders the home page.
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "base", pageData(r, "Terve — Finnish Reading", "home"))
+	h.render(w, "base", pageData(r, "Terve", "home"))
 }
 
 // ReadingPage renders the two-panel reading + analysis page.

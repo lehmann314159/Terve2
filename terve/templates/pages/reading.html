@@ -11,10 +11,10 @@
         </div>
         {{else}}
         <div class="text-controls">
-            <p class="lang-note">Paste Spanish text below, then click Load to begin reading.</p>
+            <p class="lang-note">Paste text below, then click Load to begin reading.</p>
         </div>
         <form hx-post="/load-text" hx-target="#article-body">
-            <textarea name="text" class="paste-input" rows="8" placeholder="Paste Spanish text here..."></textarea>
+            <textarea name="text" class="paste-input" rows="8" placeholder="Paste text here..."></textarea>
             <button type="submit" class="btn">Load Text</button>
         </form>
         {{end}}

@@ -2,10 +2,11 @@
 <div class="quiz-page">
     <div class="quiz-header">
         <h1>Quiz</h1>
-        <p class="quiz-subtitle">Test your Finnish grammar and vocabulary</p>
+        <p class="quiz-subtitle">Test your {{if eq .Language "fi"}}Finnish{{else}}Spanish{{end}} grammar and vocabulary</p>
     </div>
 
     <div class="quiz-types">
+        {{if eq .Language "fi"}}
         <div class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F50D;</div>
             <h2>Case Identification</h2>
@@ -16,11 +17,12 @@
                 <a href="/quiz/case-id?level=B2%2B" class="quiz-level-btn">B2+</a>
             </div>
         </div>
+        {{end}}
 
         <a href="/quiz/form-english" class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F4AC;</div>
             <h2>Form to English</h2>
-            <p>Match Finnish word forms to their English translations</p>
+            <p>Match word forms to their English translations</p>
         </a>
 
         <a href="/quiz/declension" class="quiz-type-card">
@@ -44,7 +46,7 @@
         <a href="/quiz/sentence-translation" class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F310;</div>
             <h2>Sentence Translation</h2>
-            <p>Translate Finnish sentences to English</p>
+            <p>Translate sentences to English</p>
         </a>
     </div>
 
