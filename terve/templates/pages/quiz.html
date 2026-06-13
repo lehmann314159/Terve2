@@ -25,6 +25,7 @@
             <p>Match word forms to their English translations</p>
         </a>
 
+        {{if eq .Language "fi"}}
         <a href="/quiz/declension" class="quiz-type-card">
             <div class="quiz-type-icon">&#x1F4DD;</div>
             <h2>Declension</h2>
@@ -48,6 +49,7 @@
             <h2>Sentence Translation</h2>
             <p>Translate sentences to English</p>
         </a>
+        {{end}}
     </div>
 
     {{if .RecentResults}}

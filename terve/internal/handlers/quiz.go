@@ -176,6 +176,28 @@ func caseInTier(caseName string, allowed []string) bool {
 	return false
 }
 
+// finnishOnly redirects non-Finnish sessions to /quiz and returns true.
+// Use at the top of page handlers for Finnish-only quiz types.
+func (h *Handlers) finnishOnly(w http.ResponseWriter, r *http.Request) bool {
+	if h.driverFor(r).Language() != "Finnish" {
+		http.Redirect(w, r, "/quiz", http.StatusSeeOther)
+		return true
+	}
+	return false
+}
+
+// finnishOnlyPartial renders a quiz-error partial for non-Finnish sessions and
+// returns true. Use at the top of HTMX question/answer handlers.
+func (h *Handlers) finnishOnlyPartial(w http.ResponseWriter, r *http.Request) bool {
+	if h.driverFor(r).Language() != "Finnish" {
+		h.renderPartial(w, "quiz-error", map[string]string{
+			"Error": "This quiz type is currently available for Finnish only.",
+		})
+		return true
+	}
+	return false
+}
+
 // --- Handlers ---
 
 // QuizHub renders the quiz type selection page.
@@ -195,6 +217,9 @@ func (h *Handlers) QuizHub(w http.ResponseWriter, r *http.Request) {
 
 // CaseIDPage renders the case identification quiz session page.
 func (h *Handlers) CaseIDPage(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnly(w, r) {
+		return
+	}
 	level := r.URL.Query().Get("level")
 	if _, ok := cefrCaseTiers[level]; !ok {
 		level = "B2+"
@@ -210,6 +235,9 @@ func (h *Handlers) CaseIDPage(w http.ResponseWriter, r *http.Request) {
 
 // CaseIDQuestion generates a single case identification question (HTMX partial).
 func (h *Handlers) CaseIDQuestion(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnlyPartial(w, r) {
+		return
+	}
 	sess := auth.GetSession(r.Context())
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
@@ -361,19 +389,14 @@ func (h *Handlers) FormEnglishQuestion(w http.ResponseWriter, r *http.Request) {
 	// Get morphology string
 	morphology := card.Morphology
 	if morphology == "" {
-		analyses, err := h.voikko.AnalyzeWord(card.Finnish)
-		if err == nil && len(analyses) > 0 {
-			a := analyses[0]
+		result, rerr := h.driverFor(r).Analyze(card.Finnish)
+		if rerr == nil && len(result.Tokens) > 0 {
+			tok := result.Tokens[0]
 			var parts []string
-			if a.WordClassEnglish != "" {
-				parts = append(parts, a.WordClassEnglish)
+			if tok.POS != "" {
+				parts = append(parts, tok.POS)
 			}
-			if a.Case != "" {
-				parts = append(parts, a.Case)
-			}
-			if a.Number != "" {
-				parts = append(parts, a.Number)
-			}
+			parts = append(parts, tok.Features...)
 			morphology = strings.Join(parts, ", ")
 		}
 	}
@@ -583,6 +606,9 @@ func (h *Handlers) getOrGenerateNounParadigm(lemma, wordClass string) (map[strin
 
 // DeclensionPage renders the declension quiz session page.
 func (h *Handlers) DeclensionPage(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnly(w, r) {
+		return
+	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Declension", "quiz-session"),
 		QuizType:  "declension",
@@ -593,6 +619,9 @@ func (h *Handlers) DeclensionPage(w http.ResponseWriter, r *http.Request) {
 
 // DeclensionQuestion generates a single declension question (HTMX partial).
 func (h *Handlers) DeclensionQuestion(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnlyPartial(w, r) {
+		return
+	}
 	sess := auth.GetSession(r.Context())
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
@@ -803,6 +832,9 @@ func (h *Handlers) getOrGenerateVerbParadigm(lemma string) (map[string]string, e
 
 // ConjugationPage renders the conjugation quiz session page.
 func (h *Handlers) ConjugationPage(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnly(w, r) {
+		return
+	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Conjugation", "quiz-session"),
 		QuizType:  "conjugation",
@@ -813,6 +845,9 @@ func (h *Handlers) ConjugationPage(w http.ResponseWriter, r *http.Request) {
 
 // ConjugationQuestion generates a single conjugation question (HTMX partial).
 func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnlyPartial(w, r) {
+		return
+	}
 	sess := auth.GetSession(r.Context())
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
@@ -1000,6 +1035,9 @@ func blankTargetForm(sentence, targetForm string) (string, bool) {
 
 // ClozePage renders the cloze quiz session page.
 func (h *Handlers) ClozePage(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnly(w, r) {
+		return
+	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Cloze", "quiz-session"),
 		QuizType:  "cloze",
@@ -1010,6 +1048,9 @@ func (h *Handlers) ClozePage(w http.ResponseWriter, r *http.Request) {
 
 // ClozeQuestion generates a single cloze question (HTMX partial).
 func (h *Handlers) ClozeQuestion(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnlyPartial(w, r) {
+		return
+	}
 	sess := auth.GetSession(r.Context())
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
@@ -1140,6 +1181,9 @@ func (h *Handlers) ClozeAnswer(w http.ResponseWriter, r *http.Request) {
 
 // SentenceTranslationPage renders the sentence translation quiz session page.
 func (h *Handlers) SentenceTranslationPage(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnly(w, r) {
+		return
+	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Sentence Translation", "quiz-session"),
 		QuizType:  "sentence_translation",
@@ -1150,6 +1194,9 @@ func (h *Handlers) SentenceTranslationPage(w http.ResponseWriter, r *http.Reques
 
 // SentenceTranslationQuestion generates a sentence translation question (HTMX partial).
 func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Request) {
+	if h.finnishOnlyPartial(w, r) {
+		return
+	}
 	sess := auth.GetSession(r.Context())
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
