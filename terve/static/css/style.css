@@ -241,6 +241,7 @@ body {
 .article-title { color: var(--primary); margin-bottom: 1rem; font-size: 1.3rem; }
 .placeholder-text { color: var(--text-light); font-style: italic; }
 .tokenized-text { line-height: 2; }
+.plain-text { white-space: pre-wrap; line-height: 1.7; }
 
 /* --- Word Tokens --- */
 .word {
