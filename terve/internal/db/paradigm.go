@@ -5,14 +5,14 @@ import (
 	"fmt"
 )
 
-// GetParadigm returns cached paradigm forms for a lemma+wordClass+tense.
+// GetParadigm returns cached paradigm forms for a lemma+wordClass+tense+lang.
 // Returns sql.ErrNoRows if not cached.
-func (db *DB) GetParadigm(lemma, wordClass, tense string) (map[string]string, error) {
+func (db *DB) GetParadigm(lemma, wordClass, tense, lang string) (map[string]string, error) {
 	var formsJSON string
 	err := db.QueryRow(`
 		SELECT forms_json FROM paradigms
-		WHERE lemma = ? AND word_class = ? AND tense = ?
-	`, lemma, wordClass, tense).Scan(&formsJSON)
+		WHERE lemma = ? AND word_class = ? AND tense = ? AND lang = ?
+	`, lemma, wordClass, tense, lang).Scan(&formsJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -25,24 +25,24 @@ func (db *DB) GetParadigm(lemma, wordClass, tense string) (map[string]string, er
 }
 
 // SaveParadigm upserts a paradigm into the cache.
-func (db *DB) SaveParadigm(lemma, wordClass, tense string, forms map[string]string) error {
+func (db *DB) SaveParadigm(lemma, wordClass, tense, lang string, forms map[string]string) error {
 	data, err := json.Marshal(forms)
 	if err != nil {
 		return fmt.Errorf("encode paradigm forms: %w", err)
 	}
 
 	_, err = db.Exec(`
-		INSERT INTO paradigms (lemma, word_class, tense, forms_json)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(lemma, word_class, tense) DO UPDATE SET forms_json = excluded.forms_json
-	`, lemma, wordClass, tense, string(data))
+		INSERT INTO paradigms (lemma, word_class, tense, lang, forms_json)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(lemma, word_class, tense) DO UPDATE SET forms_json = excluded.forms_json, lang = excluded.lang
+	`, lemma, wordClass, tense, lang, string(data))
 	return err
 }
 
 // DeleteParadigm removes a cached paradigm (used if regeneration is needed).
-func (db *DB) DeleteParadigm(lemma, wordClass, tense string) error {
+func (db *DB) DeleteParadigm(lemma, wordClass, tense, lang string) error {
 	_, err := db.Exec(`
-		DELETE FROM paradigms WHERE lemma = ? AND word_class = ? AND tense = ?
-	`, lemma, wordClass, tense)
+		DELETE FROM paradigms WHERE lemma = ? AND word_class = ? AND tense = ? AND lang = ?
+	`, lemma, wordClass, tense, lang)
 	return err
 }

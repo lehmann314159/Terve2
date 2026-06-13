@@ -564,7 +564,7 @@ func formatCaseKey(key string) string {
 // getOrGenerateNounParadigm returns cached paradigm or generates one via Ollama,
 // verifying forms with Voikko spell-check.
 func (h *Handlers) getOrGenerateNounParadigm(lemma, wordClass string) (map[string]string, error) {
-	forms, err := h.db.GetParadigm(lemma, wordClass, "")
+	forms, err := h.db.GetParadigm(lemma, wordClass, "", "fi")
 	if err == nil {
 		return forms, nil
 	}
@@ -596,7 +596,7 @@ func (h *Handlers) getOrGenerateNounParadigm(lemma, wordClass string) (map[strin
 	}
 
 	if len(verified) > 0 {
-		if err := h.db.SaveParadigm(lemma, wordClass, "", verified); err != nil {
+		if err := h.db.SaveParadigm(lemma, wordClass, "", "fi", verified); err != nil {
 			log.Printf("save paradigm cache: %v", err)
 		}
 	}
@@ -767,7 +767,7 @@ func (h *Handlers) DeclensionAnswer(w http.ResponseWriter, r *http.Request) {
 
 // --- Conjugation quiz ---
 
-// verbFormKeys lists all paradigm keys for verb conjugation.
+// verbFormKeys lists paradigm keys for Finnish verb conjugation.
 var verbFormKeys = []string{
 	"1st_singular_present", "2nd_singular_present", "3rd_singular_present",
 	"1st_plural_present", "2nd_plural_present", "3rd_plural_present",
@@ -775,6 +775,24 @@ var verbFormKeys = []string{
 	"1st_singular_past", "2nd_singular_past", "3rd_singular_past",
 	"1st_plural_past", "2nd_plural_past", "3rd_plural_past",
 	"passive_past",
+}
+
+// spanishVerbFormKeys lists paradigm keys for Spanish verb conjugation.
+var spanishVerbFormKeys = []string{
+	"1st_singular_present", "2nd_singular_present", "3rd_singular_present",
+	"1st_plural_present", "2nd_plural_present", "3rd_plural_present",
+	"1st_singular_preterite", "2nd_singular_preterite", "3rd_singular_preterite",
+	"1st_plural_preterite", "2nd_plural_preterite", "3rd_plural_preterite",
+	"1st_singular_imperfect", "2nd_singular_imperfect", "3rd_singular_imperfect",
+	"1st_plural_imperfect", "2nd_plural_imperfect", "3rd_plural_imperfect",
+}
+
+// verbFormKeysForLang returns the paradigm key list for the given language code.
+func verbFormKeysForLang(lang string) []string {
+	if lang == "es" {
+		return spanishVerbFormKeys
+	}
+	return verbFormKeys
 }
 
 // formatVerbKey converts "3rd_singular_present" to "3rd person singular present" for display.
@@ -792,8 +810,9 @@ func formatVerbKey(key string) string {
 }
 
 // getOrGenerateVerbParadigm returns cached paradigm or generates one via Ollama.
-func (h *Handlers) getOrGenerateVerbParadigm(lemma string) (map[string]string, error) {
-	forms, err := h.db.GetParadigm(lemma, "verb", "")
+// lang is the language code ("fi", "es").
+func (h *Handlers) getOrGenerateVerbParadigm(lemma, lang string) (map[string]string, error) {
+	forms, err := h.db.GetParadigm(lemma, "verb", "", lang)
 	if err == nil {
 		return forms, nil
 	}
@@ -801,28 +820,36 @@ func (h *Handlers) getOrGenerateVerbParadigm(lemma string) (map[string]string, e
 		return nil, err
 	}
 
-	forms, err = ollama.GenerateVerbParadigm(h.ollama, lemma)
+	if lang == "es" {
+		forms, err = ollama.GenerateSpanishVerbParadigm(h.ollama, lemma)
+	} else {
+		forms, err = ollama.GenerateVerbParadigm(h.ollama, lemma)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	verified := make(map[string]string)
-	for key, form := range forms {
-		valid, verr := h.voikko.ValidateWord(form)
-		if verr != nil {
-			log.Printf("voikko validate %q: %v", form, verr)
-			verified[key] = form
-			continue
-		}
-		if valid {
-			verified[key] = form
-		} else {
-			log.Printf("paradigm: dropping invalid form %s=%q for lemma %q", key, form, lemma)
+	verified := forms
+	if lang == "fi" {
+		// Verify each form with Voikko spell-checker, drop invalid ones
+		verified = make(map[string]string)
+		for key, form := range forms {
+			valid, verr := h.voikko.ValidateWord(form)
+			if verr != nil {
+				log.Printf("voikko validate %q: %v", form, verr)
+				verified[key] = form
+				continue
+			}
+			if valid {
+				verified[key] = form
+			} else {
+				log.Printf("paradigm: dropping invalid form %s=%q for lemma %q", key, form, lemma)
+			}
 		}
 	}
 
 	if len(verified) > 0 {
-		if err := h.db.SaveParadigm(lemma, "verb", "", verified); err != nil {
+		if err := h.db.SaveParadigm(lemma, "verb", "", lang, verified); err != nil {
 			log.Printf("save verb paradigm cache: %v", err)
 		}
 	}
@@ -832,9 +859,6 @@ func (h *Handlers) getOrGenerateVerbParadigm(lemma string) (map[string]string, e
 
 // ConjugationPage renders the conjugation quiz session page.
 func (h *Handlers) ConjugationPage(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnly(w, r) {
-		return
-	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Conjugation", "quiz-session"),
 		QuizType:  "conjugation",
@@ -845,10 +869,12 @@ func (h *Handlers) ConjugationPage(w http.ResponseWriter, r *http.Request) {
 
 // ConjugationQuestion generates a single conjugation question (HTMX partial).
 func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnlyPartial(w, r) {
-		return
-	}
+	driver := h.driverFor(r)
 	sess := auth.GetSession(r.Context())
+	lang := sess.Language
+	if lang == "" {
+		lang = "fi"
+	}
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
 	used := r.URL.Query().Get("used")
@@ -856,6 +882,7 @@ func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
 		qNum = 1
 	}
 
+	formKeys := verbFormKeysForLang(lang)
 	excludeIDs := parseUsedIDs(used)
 
 	for attempt := 0; attempt < quizMaxAttempts; attempt++ {
@@ -868,23 +895,23 @@ func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		analyses, err := h.voikko.AnalyzeWord(card.Finnish)
-		if err != nil || len(analyses) == 0 {
+		result, err := driver.Analyze(card.Finnish)
+		if err != nil || len(result.Tokens) == 0 {
 			continue
 		}
-		a := analyses[0]
+		tok := result.Tokens[0]
 
-		wc := strings.ToLower(a.WordClassEnglish)
+		wc := strings.ToLower(tok.POS)
 		if wc != "verb" {
 			continue
 		}
 
-		lemma := a.Lemma
+		lemma := tok.Lemma
 		if lemma == "" {
 			lemma = card.Lemma
 		}
 
-		paradigm, err := h.getOrGenerateVerbParadigm(lemma)
+		paradigm, err := h.getOrGenerateVerbParadigm(lemma, lang)
 		if err != nil {
 			log.Printf("conjugation quiz: get paradigm for %q: %v", lemma, err)
 			h.renderPartial(w, "quiz-error", map[string]string{
@@ -898,7 +925,7 @@ func (h *Handlers) ConjugationQuestion(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var availableKeys []string
-		for _, key := range verbFormKeys {
+		for _, key := range formKeys {
 			if _, ok := paradigm[key]; ok {
 				availableKeys = append(availableKeys, key)
 			}

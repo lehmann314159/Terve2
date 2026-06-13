@@ -7,6 +7,7 @@ import (
 )
 
 const paradigmSystem = "You are a Finnish morphology expert. Return ONLY valid JSON with no markdown fences or extra text."
+const spanishParadigmSystem = "You are a Spanish morphology expert. Return ONLY valid JSON with no markdown fences or extra text."
 
 // GenerateNounParadigm asks Ollama to generate all 28 case forms (14 cases x 2 numbers)
 // for a Finnish noun or adjective. Returns a map like {"nominative_singular": "talo", ...}.
@@ -85,6 +86,49 @@ Return ONLY the JSON object, no explanation.`, lemma)
 	resp, err := c.Generate(paradigmSystem, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("generate verb paradigm: %w", err)
+	}
+
+	return parseParadigmJSON(resp)
+}
+
+// GenerateSpanishVerbParadigm asks Ollama to generate present indicative,
+// preterite, and imperfect forms for a Spanish verb.
+// Returns a map like {"1st_singular_present": "hablo", "1st_singular_preterite": "hablé", ...}.
+func GenerateSpanishVerbParadigm(c *Client, lemma string) (map[string]string, error) {
+	prompt := fmt.Sprintf(`Generate conjugation forms of the Spanish verb "%s" in three tenses:
+- present indicative (presente de indicativo)
+- preterite (pretérito indefinido)
+- imperfect (pretérito imperfecto)
+
+Include 1st, 2nd, 3rd person singular and 1st, 2nd, 3rd person plural for each tense.
+
+Return a JSON object with keys in the format "person_number_tense":
+{
+  "1st_singular_present": "...",
+  "2nd_singular_present": "...",
+  "3rd_singular_present": "...",
+  "1st_plural_present": "...",
+  "2nd_plural_present": "...",
+  "3rd_plural_present": "...",
+  "1st_singular_preterite": "...",
+  "2nd_singular_preterite": "...",
+  "3rd_singular_preterite": "...",
+  "1st_plural_preterite": "...",
+  "2nd_plural_preterite": "...",
+  "3rd_plural_preterite": "...",
+  "1st_singular_imperfect": "...",
+  "2nd_singular_imperfect": "...",
+  "3rd_singular_imperfect": "...",
+  "1st_plural_imperfect": "...",
+  "2nd_plural_imperfect": "...",
+  "3rd_plural_imperfect": "..."
+}
+
+Return ONLY the JSON object, no explanation.`, lemma)
+
+	resp, err := c.Generate(spanishParadigmSystem, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("generate Spanish verb paradigm: %w", err)
 	}
 
 	return parseParadigmJSON(resp)

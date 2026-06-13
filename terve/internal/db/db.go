@@ -152,6 +152,9 @@ func (db *DB) migrate() error {
 	db.Exec(`ALTER TABLE books ADD COLUMN difficulty TEXT NOT NULL DEFAULT ''`)
 	// Migration for existing DBs: add lang column to books if missing.
 	db.Exec(`ALTER TABLE books ADD COLUMN lang TEXT NOT NULL DEFAULT 'fi'`)
+	// Migration: add lang column to paradigms for multi-language support.
+	db.Exec(`ALTER TABLE paradigms ADD COLUMN lang TEXT NOT NULL DEFAULT 'fi'`)
+	db.Exec(`CREATE INDEX IF NOT EXISTS idx_paradigms_lemma_lang ON paradigms(lemma, lang)`)
 
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS quiz_results (
