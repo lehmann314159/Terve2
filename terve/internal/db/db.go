@@ -201,6 +201,10 @@ func (db *DB) migrate() error {
 		return err
 	}
 
+	// Migration: add lang column to sentence_cache for multi-language support.
+	db.Exec(`ALTER TABLE sentence_cache ADD COLUMN lang TEXT NOT NULL DEFAULT 'fi'`)
+	db.Exec(`CREATE INDEX IF NOT EXISTS idx_sentence_cache_lemma_lang ON sentence_cache(lemma, lang)`)
+
 	if err := db.seedCards(); err != nil {
 		return err
 	}

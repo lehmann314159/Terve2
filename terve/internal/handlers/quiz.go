@@ -986,10 +986,11 @@ func (h *Handlers) ConjugationAnswer(w http.ResponseWriter, r *http.Request) {
 
 // --- Cloze quiz ---
 
-// getOrGenerateSentences returns cached sentences for a lemma, or generates
-// them via Ollama on a cache miss and saves them to the DB.
-func (h *Handlers) getOrGenerateSentences(lemma, wordClass string) ([]db.CachedSentence, error) {
-	cached, err := h.db.GetSentencesByLemma(lemma)
+// getOrGenerateSentences returns cached sentences for a lemma in a given
+// language, or generates them via Ollama on a cache miss and saves them to the DB.
+// lang is the language code ("fi", "es"); languageName is the display name for the prompt.
+func (h *Handlers) getOrGenerateSentences(lemma, wordClass, lang, languageName string) ([]db.CachedSentence, error) {
+	cached, err := h.db.GetSentencesByLemma(lemma, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -997,7 +998,7 @@ func (h *Handlers) getOrGenerateSentences(lemma, wordClass string) ([]db.CachedS
 		return cached, nil
 	}
 
-	entries, err := ollama.GenerateSentences(h.ollama, lemma, wordClass)
+	entries, err := ollama.GenerateSentences(h.ollama, languageName, lemma, wordClass)
 	if err != nil {
 		return nil, err
 	}
@@ -1006,7 +1007,8 @@ func (h *Handlers) getOrGenerateSentences(lemma, wordClass string) ([]db.CachedS
 	for _, e := range entries {
 		sentences = append(sentences, db.CachedSentence{
 			Lemma:      lemma,
-			Finnish:    e.Finnish,
+			Lang:       lang,
+			Finnish:    e.Sentence,
 			English:    e.English,
 			TargetForm: e.TargetForm,
 		})
@@ -1017,7 +1019,7 @@ func (h *Handlers) getOrGenerateSentences(lemma, wordClass string) ([]db.CachedS
 	}
 
 	// Re-fetch to get IDs
-	return h.db.GetSentencesByLemma(lemma)
+	return h.db.GetSentencesByLemma(lemma, lang)
 }
 
 // blankTargetForm replaces the first case-insensitive occurrence of targetForm
@@ -1035,9 +1037,6 @@ func blankTargetForm(sentence, targetForm string) (string, bool) {
 
 // ClozePage renders the cloze quiz session page.
 func (h *Handlers) ClozePage(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnly(w, r) {
-		return
-	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Cloze", "quiz-session"),
 		QuizType:  "cloze",
@@ -1048,10 +1047,12 @@ func (h *Handlers) ClozePage(w http.ResponseWriter, r *http.Request) {
 
 // ClozeQuestion generates a single cloze question (HTMX partial).
 func (h *Handlers) ClozeQuestion(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnlyPartial(w, r) {
-		return
-	}
+	driver := h.driverFor(r)
 	sess := auth.GetSession(r.Context())
+	lang := sess.Language
+	if lang == "" {
+		lang = "fi"
+	}
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
 	used := r.URL.Query().Get("used")
@@ -1077,7 +1078,7 @@ func (h *Handlers) ClozeQuestion(w http.ResponseWriter, r *http.Request) {
 		}
 		lemma := card.Lemma
 
-		sentences, err := h.getOrGenerateSentences(lemma, wordClass)
+		sentences, err := h.getOrGenerateSentences(lemma, wordClass, lang, driver.Language())
 		if err != nil {
 			log.Printf("cloze quiz: get sentences for %q: %v", lemma, err)
 			excludeIDs = append(excludeIDs, card.ID)
@@ -1181,9 +1182,6 @@ func (h *Handlers) ClozeAnswer(w http.ResponseWriter, r *http.Request) {
 
 // SentenceTranslationPage renders the sentence translation quiz session page.
 func (h *Handlers) SentenceTranslationPage(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnly(w, r) {
-		return
-	}
 	h.render(w, "base", QuizSessionData{
 		PageData:  pageData(r, "Terve — Sentence Translation", "quiz-session"),
 		QuizType:  "sentence_translation",
@@ -1194,10 +1192,12 @@ func (h *Handlers) SentenceTranslationPage(w http.ResponseWriter, r *http.Reques
 
 // SentenceTranslationQuestion generates a sentence translation question (HTMX partial).
 func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Request) {
-	if h.finnishOnlyPartial(w, r) {
-		return
-	}
+	driver := h.driverFor(r)
 	sess := auth.GetSession(r.Context())
+	lang := sess.Language
+	if lang == "" {
+		lang = "fi"
+	}
 	qNum, _ := strconv.Atoi(r.URL.Query().Get("q"))
 	score, _ := strconv.Atoi(r.URL.Query().Get("s"))
 	used := r.URL.Query().Get("used")
@@ -1223,7 +1223,7 @@ func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Re
 		}
 		lemma := card.Lemma
 
-		sentences, err := h.getOrGenerateSentences(lemma, wordClass)
+		sentences, err := h.getOrGenerateSentences(lemma, wordClass, lang, driver.Language())
 		if err != nil {
 			log.Printf("sentence translation quiz: get sentences for %q: %v", lemma, err)
 			excludeIDs = append(excludeIDs, card.ID)
@@ -1242,7 +1242,7 @@ func (h *Handlers) SentenceTranslationQuestion(w http.ResponseWriter, r *http.Re
 		options := []QuizOption{{Value: s.English, Display: s.English}}
 		seen := map[string]bool{strings.ToLower(s.English): true}
 
-		otherSentences, _ := h.db.GetRandomSentencesExcludingLemma(lemma, 6)
+		otherSentences, _ := h.db.GetRandomSentencesExcludingLemma(lemma, lang, 6)
 		for _, os := range otherSentences {
 			if len(options) >= 4 {
 				break

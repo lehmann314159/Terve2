@@ -4,8 +4,8 @@ import "testing"
 
 func TestParseSentenceJSON_Valid(t *testing.T) {
 	input := `[
-		{"finnish": "Menen taloon aamulla.", "english": "I go to the house in the morning.", "target_form": "taloon"},
-		{"finnish": "Talo on suuri.", "english": "The house is big.", "target_form": "Talo"}
+		{"sentence": "Menen taloon aamulla.", "english": "I go to the house in the morning.", "target_form": "taloon"},
+		{"sentence": "Talo on suuri.", "english": "The house is big.", "target_form": "Talo"}
 	]`
 
 	entries, err := parseSentenceJSON(input)
@@ -15,8 +15,8 @@ func TestParseSentenceJSON_Valid(t *testing.T) {
 	if len(entries) != 2 {
 		t.Fatalf("expected 2 entries, got %d", len(entries))
 	}
-	if entries[0].Finnish != "Menen taloon aamulla." {
-		t.Errorf("finnish = %q", entries[0].Finnish)
+	if entries[0].Sentence != "Menen taloon aamulla." {
+		t.Errorf("sentence = %q", entries[0].Sentence)
 	}
 	if entries[0].TargetForm != "taloon" {
 		t.Errorf("target_form = %q", entries[0].TargetForm)
@@ -25,7 +25,7 @@ func TestParseSentenceJSON_Valid(t *testing.T) {
 
 func TestParseSentenceJSON_WithFences(t *testing.T) {
 	input := "```json\n" + `[
-		{"finnish": "Koira juoksee puistossa.", "english": "The dog runs in the park.", "target_form": "koira"}
+		{"sentence": "Koira juoksee puistossa.", "english": "The dog runs in the park.", "target_form": "koira"}
 	]` + "\n```"
 
 	entries, err := parseSentenceJSON(input)
@@ -42,17 +42,17 @@ func TestParseSentenceJSON_WithFences(t *testing.T) {
 
 func TestParseSentenceJSON_FiltersInvalid(t *testing.T) {
 	input := `[
-		{"finnish": "Menen taloon.", "english": "I go to the house.", "target_form": "taloon"},
-		{"finnish": "Talo on suuri.", "english": "The house is big.", "target_form": "missing_word"},
-		{"finnish": "", "english": "Empty finnish.", "target_form": "test"},
-		{"finnish": "Has finnish.", "english": "", "target_form": "Has"}
+		{"sentence": "Menen taloon.", "english": "I go to the house.", "target_form": "taloon"},
+		{"sentence": "Talo on suuri.", "english": "The house is big.", "target_form": "missing_word"},
+		{"sentence": "", "english": "Empty sentence.", "target_form": "test"},
+		{"sentence": "Has sentence.", "english": "", "target_form": "Has"}
 	]`
 
 	entries, err := parseSentenceJSON(input)
 	if err != nil {
 		t.Fatalf("parseSentenceJSON: %v", err)
 	}
-	// Only the first entry should pass: target_form in finnish, non-empty fields
+	// Only the first entry should pass: target_form in sentence, non-empty fields
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 valid entry, got %d", len(entries))
 	}

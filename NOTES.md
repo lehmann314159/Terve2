@@ -107,7 +107,7 @@ At 32B parameters, quantization level does not meaningfully affect linguistic kn
 - [x] **Hide case-id quiz for Spanish**: hidden in hub + handler-level guard.
 - [x] **form-english handler**: ported to `driverFor(r).Analyze()` for morphology fallback — works for any language.
 - [x] **Finnish-only guards**: `case-id`, `declension`, `conjugation`, `cloze`, `sentence-translation` page and question handlers all guard with `finnishOnly`/`finnishOnlyPartial` (redirect or error partial). Hub hides these cards for Spanish.
-- [ ] **Cloze / sentence-translation for Spanish**: `ollama.GenerateSentences` is hardcoded Finnish ("You are a Finnish language teacher"). Needs a language-aware sentence prompt (pass language name; use the driver or a new `GenerateSentences(lang, lemma, wordClass)` signature).
+- [x] **Cloze / sentence-translation for Spanish**: `ollama.GenerateSentences` now accepts `language string`; `sentence_cache` table has a `lang` column (migration); DB functions scoped by lang; quiz handlers pass `driver.Language()`. Both quiz types now available for Spanish.
 - [ ] **Conjugation for Spanish**: paradigm keys and Ollama prompts in `ollama/paradigm.go` are Finnish-specific. Needs Spanish conjugation paradigm support before this quiz type works for ES.
 - [ ] **Declension for Spanish**: Finnish case declension concept doesn't apply. Consider a Spanish gender/number agreement quiz instead.
 
